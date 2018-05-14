@@ -19,9 +19,7 @@ train_mnist_cpu:
 		--save_checkpoints_steps 10
 
 
-test_gpu:
-	create_mnist_dataset_gpu
-	train_mnist_gpu
+test_gpu: create_mnist_dataset_gpu train_mnist_gpu
 
 create_mnist_dataset_gpu:
 	python -m src.dataset.download_mnist --save_dir data/raw/mnist
