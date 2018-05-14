@@ -6,8 +6,6 @@ import os
 import argparse
 import numpy as np
 from . import data_utils
-# from .data_utils import get_filenames_and_labels, generate_partition, \
-#     dump_dataset, write_labels_map
 
 
 def check_filesystem(flags):
