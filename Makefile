@@ -1,12 +1,12 @@
 test_cpu: create_mnist_dataset_cpu train_mnist_cpu
 
 create_mnist_dataset_cpu:
-	python -m src.dataset.download_mnist --save_dir data/raw/mnist
-	python -m src.dataset.mnist_dataset_to_json --images_dir data/raw/mnist \
+	python3 -m src.dataset.download_mnist --save_dir data/raw/mnist
+	python3 -m src.dataset.mnist_dataset_to_json --images_dir data/raw/mnist \
 		--random_seed 1234 --max_files_train 200 --max_files_test 200
 
 train_mnist_cpu:
-	python -m src.experiments.hub_module_experiment \
+	python3 -m src.experiments.hub_module_experiment \
 		--experiment_name mnist_test_cpu \
 		--images_dir data/raw/mnist \
 		--random_seed 1234 \
@@ -22,12 +22,12 @@ train_mnist_cpu:
 test_gpu: create_mnist_dataset_gpu train_mnist_gpu
 
 create_mnist_dataset_gpu:
-	python -m src.dataset.download_mnist --save_dir data/raw/mnist
-	python -m src.dataset.mnist_dataset_to_json --images_dir data/raw/mnist \
+	python3 -m src.dataset.download_mnist --save_dir data/raw/mnist
+	python3 -m src.dataset.mnist_dataset_to_json --images_dir data/raw/mnist \
 		--random_seed 1234
 
 train_mnist_gpu:
-	python -m src.experiments.hub_module_experiment \
+	python3 -m src.experiments.hub_module_experiment \
 		--experiment_name mnist_test_cpu \
 		--images_dir data/raw/mnist \
 		--random_seed 1234 \
