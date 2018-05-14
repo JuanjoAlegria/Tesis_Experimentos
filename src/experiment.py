@@ -28,9 +28,8 @@ def main(_):
     # Configuramos el hook para loggear tensores
     tensors_to_log = {"filenames": "IteratorGetNext:0",
                       "loss": "loss:0",
-                      "has_prev_bottlenecks": "has_prev_bottlenecks:0",
-                      #"write_bottlenecks": "write_bottlenecks:0"
-                      }
+                      "has_prev_bottlenecks": "has_prev_bottlenecks:0"}
+    #"write_bottlenecks": "write_bottlenecks:0"
 
     logging_hook = train.LoggingTensorHook(
         tensors=tensors_to_log, every_n_iter=1)
