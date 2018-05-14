@@ -63,5 +63,7 @@ target/
 
 #Extras Propios
 *.directory
-Scaneos/
-Datos/
+data/*
+logs_and_checkpoints/*
+results/*
+saved_models/*
