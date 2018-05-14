@@ -318,7 +318,7 @@ class HubModelExperiment:
         self.estimator.train(input_fn=train_input_fn,
                              steps=self.num_epochs, hooks=[train_log])
 
-    def test(self, filenames, labels, write_predictions=False):
+    def test_and_predict(self, filenames, labels, partition_name=""):
         """Evalúa el tf.Estimator
 
         Primero construye la input_fn con que se alimentará el modelo, y luego
@@ -338,20 +338,20 @@ class HubModelExperiment:
         eval_results = self.estimator.evaluate(input_fn=test_input_fn)
         print(eval_results)
 
-        if write_predictions:
-            predictions = self.estimator.predict(input_fn=test_input_fn)
-            header = "Filename / Real Class / Predicted Class\n"
-            lines = [header]
-            for index, pred in enumerate(predictions):
-                filename = filenames[index]
-                real_class = labels[index]
-                predicted_class = pred['classes']
-                line = "{fn} {real} {predicted}\n".format(
-                    fn=filename, real=real_class, predicted=predicted_class)
-                lines.append(line)
-            output = os.path.join(self.results_dir, "predictions.txt")
-            with open(output, "w") as file:
-                file.writelines(lines)
+        predictions = self.estimator.predict(input_fn=test_input_fn)
+        header = "Filename / Real Class / Predicted Class\n"
+        lines = [header]
+        for index, pred in enumerate(predictions):
+            filename = filenames[index]
+            real_class = labels[index]
+            predicted_class = pred['classes']
+            line = "{fn} {real} {predicted}\n".format(
+                fn=filename, real=real_class, predicted=predicted_class)
+            lines.append(line)
+        output = os.path.join(
+            self.results_dir, partition_name + "_predictions.txt")
+        with open(output, "w") as file:
+            file.writelines(lines)
 
     def train_and_evaluate(self, train_filenames, train_labels,
                            validation_filenames, validation_labels):
@@ -681,9 +681,10 @@ def main(_):
     print("Entrenando")
     hub_experiment.train(train_filenames, train_labels)
     print("Evaluando con el conjunto de validación")
-    hub_experiment.test(validation_filenames, validation_labels)
+    hub_experiment.test_and_predict(
+        validation_filenames, validation_labels, "validation")
     print("Evaluando con el conjunto de prueba")
-    hub_experiment.test(test_filenames, test_labels, write_predictions=True)
+    hub_experiment.test_and_predict(test_filenames, test_labels, "test")
     print("Exportando")
     hub_experiment.export_graph()
 
