@@ -7,7 +7,7 @@ create_mnist_dataset_cpu:
 
 train_mnist_cpu:
 	python3 -m src.experiments.hub_module_experiment \
-		--experiment_name mnist_test_cpu \
+		--experiment_name mnist_test_experiment \
 		--images_dir data/raw/mnist \
 		--random_seed 1234 \
 		--dataset_json data/partitions_json/mnist/dataset_dict.json \
@@ -28,7 +28,7 @@ create_mnist_dataset_gpu:
 
 train_mnist_gpu:
 	python3 -m src.experiments.hub_module_experiment \
-		--experiment_name mnist_test_cpu \
+		--experiment_name mnist_test_experiment \
 		--images_dir data/raw/mnist \
 		--random_seed 1234 \
 		--dataset_json data/partitions_json/mnist/dataset_dict.json \
@@ -42,8 +42,8 @@ train_mnist_gpu:
 clear_test:
 	rm -r data/raw/mnist || true
 	rm -r data/partitions_json/mnist || true
-	rm -r logs_and_checkpoints/mnist_test_cpu || true
-	rm -r saved_models/mnist_test_cpu || true
+	rm -r logs_and_checkpoints/mnist_test_experiment || true
+	rm -r saved_models/mnist_test_experiment || true
 
 clear_test_with_bottlenecks: clear_test
 	rm -r data/bottlenecks/inception_v3/mnist || true
