@@ -72,7 +72,7 @@ class HubModelExperiment:
 
         # Pasamos las variables relacionadas al entrenamiento
         self.train_batch_size = flags.train_batch_size
-        self.validation_batch_size = flags.validation_batch_size
+        self.test_batch_size = flags.test_batch_size
         self.num_epochs = flags.num_epochs
         self.learning_rate = flags.learning_rate
         self.tensors_to_log_train = flags.tensors_to_log_train
@@ -233,7 +233,7 @@ class HubModelExperiment:
             random_crop=self.random_crop, random_scale=self.random_scale,
             random_brightness=self.random_brightness)
 
-    def __test_input_fn(self, test_filenames, test_labels, final_test=False):
+    def __test_input_fn(self, test_filenames, test_labels):
         """Construye un dataset para ser utilizado como input_fn en la fase de
         pruebas.
 
@@ -254,22 +254,19 @@ class HubModelExperiment:
             - final_test: bool. Si es True, batch_size será igual a
             len(test_filenames), ya que se evaluará con todo el conjunto.
             En caso contrario, batch_size será igual a
-            self.validation_batch_size.
+            self.test_batch_size.
 
         Returns:
             tf.data.Dataset, con mapeo de filenames a imágenes y distorsiones
             aleatorias en caso de ser requeridas. Además, se le aplican las
             operaciones shuffle, repeat y batch.
         """
-        if final_test:
-            batch_size = len(test_filenames)
-        else:
-            batch_size = self.validation_batch_size
+
         return tf_data_utils.create_images_dataset(
             test_filenames, test_labels, image_shape=self.module_image_shape,
             image_depth=self.module_image_depth,
             src_dir=self.images_dir, shuffle=False, num_epochs=1,
-            batch_size=batch_size)
+            batch_size=self.test_batch_size)
 
     def __serving_input_receiver_fn(self):
         """Construye una input_fn para ser utilizada al exportar el modelo.
@@ -321,39 +318,33 @@ class HubModelExperiment:
         self.estimator.train(input_fn=train_input_fn,
                              steps=self.num_epochs, hooks=[train_log])
 
-    def test(self, validation_filenames, validation_labels, hooks=None,
-             final_test=True):
+    def test(self, filenames, labels, write_predictions=False):
         """Evalúa el tf.Estimator
 
         Primero construye la input_fn con que se alimentará el modelo, y luego
         lo evalúa.
 
         Args:
-            - validation_filenames: [str]. Nombres de los archivos que serán
+            - filenames: [str]. Nombres de los archivos que serán
             utilizados en la evaluación. Su formato es
             label_original/filename.jpg, y la ubicación es relativa a
             self.images_dir.
-            - validation_labels: [int]. Etiquetas numéricas con las cuales se
+            - labels: [int]. Etiquetas numéricas con las cuales se
             realizará la evaluación.
-            - hooks: [SessionRunHooks]. Lista de hooks que deben ser ejecutados
-            durante la evaluación.
         """
-        test_input_fn = lambda: self.__test_input_fn(validation_filenames,
-                                                     validation_labels,
-                                                     final_test=final_test)
+        test_input_fn = lambda: self.__test_input_fn(filenames,
+                                                     labels)
 
-        eval_results = self.estimator.evaluate(
-            input_fn=test_input_fn, hooks=hooks)
+        eval_results = self.estimator.evaluate(input_fn=test_input_fn)
         print(eval_results)
 
-        if final_test:
-            predictions = self.estimator.predict(
-                input_fn=test_input_fn, hooks=hooks)
+        if write_predictions:
+            predictions = self.estimator.predict(input_fn=test_input_fn)
             header = "Filename / Real Class / Predicted Class\n"
             lines = [header]
             for index, pred in enumerate(predictions):
-                filename = validation_filenames[index]
-                real_class = validation_labels[index]
+                filename = filenames[index]
+                real_class = labels[index]
                 predicted_class = pred['classes']
                 line = "{fn} {real} {predicted}\n".format(
                     fn=filename, real=real_class, predicted=predicted_class)
@@ -585,12 +576,13 @@ def get_parser():
         help='Cuántas imágenes entrenar en cada paso.'
     )
     parser.add_argument(
-        '--validation_batch_size',
+        '--test_batch_size',
         type=int,
         default=100,
         help="""\
-        Cuántas imágenes evaluar en cada paso. Si es que el valor es -1, se
-        utilizará todo el conjunto de validación para evaluar en cada paso.\
+        Tamaño del batch a utilizar al evaluar el conjunto. Sin importar el
+        valor entregado, se evaluará todo el conjunto de prueba, sólo que no
+        todo al mismo tiempo.\
         """
     )
     parser.add_argument(
@@ -686,12 +678,12 @@ def main(_):
     # logging_hook = tf.train.LoggingTensorHook(
     #     tensors=tensors_to_log, every_n_iter=1)
 
-    print("Entrenando y evaluando (conjunto de validación)")
+    print("Entrenando")
     hub_experiment.train(train_filenames, train_labels)
     print("Evaluando con el conjunto de validación")
     hub_experiment.test(validation_filenames, validation_labels)
     print("Evaluando con el conjunto de prueba")
-    hub_experiment.test(test_filenames, test_labels)
+    hub_experiment.test(test_filenames, test_labels, write_predictions=True)
     print("Exportando")
     hub_experiment.export_graph()
 
