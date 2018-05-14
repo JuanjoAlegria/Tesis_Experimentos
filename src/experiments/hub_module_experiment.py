@@ -299,7 +299,7 @@ class HubModelExperiment:
         return tf.estimator.export.ServingInputReceiver(features,
                                                         received_tensors)
 
-    def train(self, train_filenames, train_labels, hooks=None):
+    def train(self, train_filenames, train_labels):
         """Entrena el tf.Estimator
 
         Primero construye la input_fn con que se alimentará el modelo, y luego
@@ -317,8 +317,9 @@ class HubModelExperiment:
         """
         train_input_fn = lambda: self.__train_input_fn(
             train_filenames, train_labels)
+        train_log = build_logging_tensor_hook(self.tensors_to_log_train)
         self.estimator.train(input_fn=train_input_fn,
-                             steps=self.num_epochs, hooks=hooks)
+                             steps=self.num_epochs, hooks=[train_log])
 
     def test(self, validation_filenames, validation_labels, hooks=None,
              final_test=True):
@@ -686,8 +687,9 @@ def main(_):
     #     tensors=tensors_to_log, every_n_iter=1)
 
     print("Entrenando y evaluando (conjunto de validación)")
-    hub_experiment.train_and_evaluate(train_filenames, train_labels,
-                                      validation_filenames, validation_labels)
+    hub_experiment.train(train_filenames, train_labels)
+    print("Evaluando con el conjunto de validación")
+    hub_experiment.test(validation_filenames, validation_labels)
     print("Evaluando con el conjunto de prueba")
     hub_experiment.test(test_filenames, test_labels)
     print("Exportando")
