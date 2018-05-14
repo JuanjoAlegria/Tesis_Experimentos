@@ -120,7 +120,7 @@ class HubModelExperiment:
         # Logs y checkpoints son dependientes del experimento específico
         if self.logs_and_checkpoints_dir == "":
             self.logs_and_checkpoints_dir = os.path.join(
-                root_path, "logs_and_checkpoints_dir", self.experiment_name)
+                root_path, "logs_and_checkpoints", self.experiment_name)
         # Bottlenecks, en cambio, dependen sólo del modelo y de las imágenes a
         # entrenar
         if self.bottlenecks_dir == "":

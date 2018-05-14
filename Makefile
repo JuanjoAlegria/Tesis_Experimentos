@@ -45,5 +45,5 @@ clear_test:
 	rm -r data/raw/mnist || true
 	rm -r data/bottlenecks/inception_v3/mnist || true
 	rm -r data/partitions_json/mnist || true
-	rm -r logs_and_checkpoints_dir/mnist_test_cpu || true
+	rm -r logs_and_checkpoints/mnist_test_cpu || true
 	rm -r saved_models/mnist_test_cpu || true
