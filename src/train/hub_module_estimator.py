@@ -26,6 +26,7 @@ class HubModelExperiment:
 
 import os
 import glob
+import json
 import shutil
 import argparse
 import tensorflow as tf
@@ -402,7 +403,8 @@ def get_parser():
         default=0,
         help="""\
         Porcentaje que indica el margen total a utilizar alrededor de la
-        caja de recorte (crop box).Sólo tiene efecto en las imágenes de entrenamiento.\
+        caja de recorte (crop box).Sólo tiene efecto en las imágenes de
+        entrenamiento.\
         """
     )
     parser.add_argument(
@@ -521,6 +523,7 @@ class HubModelExperiment:
 
         self.__init_log_and_random_seeds()
         self.__prepare_filesystem()
+        self.__save_config_file(flags)
         self.estimator = self.__build_estimator()
 
     def __init_log_and_random_seeds(self):
@@ -579,6 +582,19 @@ class HubModelExperiment:
         for label_index in range(self.n_classes):
             os.makedirs(os.path.join(self.bottlenecks_dir, str(label_index)),
                         exist_ok=True)
+
+    def __save_config_file(self, flags):
+        """ Guarda un archivo json en self.results_dir con la configuración
+        utilizada
+
+        Args:
+            - flags: argparse.Namespace. Objeto con los parámetros del
+            modelo. Se genera tras llamar a parser.parse_known_args()
+            """
+        flags_as_dict = vars(flags)
+        config_file_path = os.path.join(self.results_dir, "config.json")
+        with open(config_file_path, "w") as config_json:
+            json.dump(flags_as_dict, config_json)
 
     def __build_estimator(self, export=False):
         """Construye un tf.Estimator basado en hub_module_estimator.
@@ -825,16 +841,19 @@ class HubModelExperiment:
         received_tensors = {'images': serialized_tf_example}
         features = tf.parse_example(serialized_tf_example, feature_spec)
 
-        fn = lambda img: dataset.decode_image_from_string(
+        map_fn = lambda img: dataset.decode_image_from_string(
             img, self.module_image_shape, self.module_image_depth)
 
         features['image'] = tf.map_fn(
-            fn, features['image'], dtype=tf.float32)
+            map_fn, features['image'], dtype=tf.float32)
 
         return tf.estimator.export.ServingInputReceiver(features,
                                                         received_tensors)
 
     def export_graph(self):
+        """Exporta el grafo como un SavedModel estándar para ser utilizado
+        posteriormente
+        """
         estimator_for_export = self.__build_estimator(export=True)
         estimator_for_export.export_savedmodel(
             self.export_model_dir, self.__serving_input_receiver_fn,
