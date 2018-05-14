@@ -1,8 +1,8 @@
 test_cpu: create_mnist_dataset_cpu train_mnist_cpu
 
 create_mnist_dataset_cpu:
-	python3 -m src.dataset.download_mnist --save_dir data/raw/mnist
-	python3 -m src.dataset.mnist_dataset_to_json --images_dir data/raw/mnist \
+	python3 -m src.scripts.download_mnist --save_dir data/raw/mnist
+	python3 -m src.scripts.mnist_dataset_to_json --images_dir data/raw/mnist \
 		--random_seed 1234 --max_files_train 200 --max_files_test 200
 
 train_mnist_cpu:
@@ -22,8 +22,8 @@ train_mnist_cpu:
 test_gpu: create_mnist_dataset_gpu train_mnist_gpu
 
 create_mnist_dataset_gpu:
-	python3 -m src.dataset.download_mnist --save_dir data/raw/mnist
-	python3 -m src.dataset.mnist_dataset_to_json --images_dir data/raw/mnist \
+	python3 -m src.scripts.download_mnist --save_dir data/raw/mnist
+	python3 -m src.scripts.mnist_dataset_to_json --images_dir data/raw/mnist \
 		--random_seed 1234
 
 train_mnist_gpu:
@@ -41,7 +41,9 @@ train_mnist_gpu:
 
 clear_test:
 	rm -r data/raw/mnist || true
-	rm -r data/bottlenecks/inception_v3/mnist || true
 	rm -r data/partitions_json/mnist || true
 	rm -r logs_and_checkpoints/mnist_test_cpu || true
 	rm -r saved_models/mnist_test_cpu || true
+
+clear_test_with_bottlenecks: clear_test
+	rm -r data/bottlenecks/inception_v3/mnist || true
