@@ -36,8 +36,10 @@ def get_biopsies_ids(sess, folder_id):
     ndp.microscopiavirtual.com.
 
     Args:
-        - requests.Session(), con cookies de ndp.microscopiavirtual.com ya
-        inicializadas
+        - sess: requests.Session(), con cookies de ndp.microscopiavirtual.com
+        ya inicializadas.
+        - folder_id: str. Id de la carpeta en ndp.microscopiavirtual.com que
+        contiene las biopsias a estudiar.
 
     Returns:
         - dict[str: str], donde las llaves corresponden a las ids de las
@@ -65,12 +67,34 @@ def get_biopsies_ids(sess, folder_id):
 
 
 def get_biopsy_annotation(sess, biopsy_item_id):
+    """Obtiene la anotación correspondiente a una biopia.
+
+    Args:
+        - sess: requests.Session(), con cookies de ndp.microscopiavirtual.com
+        ya inicializadas.
+        - biopsy_item_id: str. ItemId de la biopsia de la cual se quiere
+        recuperar la anotación
+
+    Returns:
+        - b'str, correspondiente a la anotación. La estructura de este string
+        es la de un xml.
+    """
     url = ANNOTATIONS_URL_TEMPLATE.format(item_id=biopsy_item_id)
     annotation = sess.get(url).content
     return annotation
 
 
 def main(username, password, folder_id, annotations_dir):
+    """Inicia sesión en ndp.microscopiavirtual.com, obtiene un diccionario
+    con los item ids y los nombres de las biopsias, y guarda las anotaciones
+    correspondientes a cada biopsia.
+
+    Args:
+        username: Nombre de usuario en ndp.microscopiavirtual.com.
+        password: Contraseña en ndp.microscopiavirtual.com.
+        folder_id: Id de la carpeta con biopsias.
+        annotations_dir: Directorio donde se guardarán las anotaciones.
+    """
     os.makedirs(annotations_dir, exist_ok=True)
     sess = get_session(username, password)
     dict_ids = get_biopsies_ids(sess, folder_id)
@@ -87,13 +111,13 @@ if __name__ == "__main__":
         '--username',
         type=str,
         required=True,
-        help="Nombre de usuario"
+        help="Nombre de usuario en ndp.microscopiavirtual.com."
     )
     PARSER.add_argument(
         '--password',
         type=str,
         required=True,
-        help="Contraseña"
+        help="Contraseña en ndp.microscopiavirtual.com."
     )
     PARSER.add_argument(
         '--folder_id',
@@ -108,7 +132,7 @@ if __name__ == "__main__":
         '--annotations_dir',
         type=str,
         help="""\
-        Directorio donde se guardarán las anotacione. En caso de no entregar
+        Directorio donde se guardarán las anotaciones. En caso de no entregar
         un valor, las anotaciones serán guardadas en la carpeta 
         data/ndp_annotations.\
         """,
