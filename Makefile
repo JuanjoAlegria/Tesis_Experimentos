@@ -35,7 +35,7 @@ train_mnist_gpu:
 		--num_epochs 1000 \
 		--model_name inception_v3 \
 		--remove_prev_ckpts_and_logs \
-		--evaluate_every_n_seconds 120 \
+		--evaluate_every_n_seconds 600 \
 		--tensors_to_log_train loss global_step \
 		--save_checkpoints_steps 100
 

@@ -77,8 +77,9 @@ class HubModelExperiment:
         self.learning_rate = flags.learning_rate
         self.tensors_to_log_train = flags.tensors_to_log_train
         self.tensors_to_log_val = flags.tensors_to_log_val
-        self.evaluate_every_n_seconds = flags.evaluate_every_n_seconds
         self.save_checkpoints_steps = flags.save_checkpoints_steps
+        self.evaluate_every_n_seconds = flags.evaluate_every_n_seconds
+        self.delay_evaluation = flags.delay_evaluation
 
         # Otras variables importantes
         self.cache_bottlenecks = not tf_data_utils.should_distort_images(
@@ -396,7 +397,7 @@ class HubModelExperiment:
                                             hooks=[train_log])
         eval_spec = tf.estimator.EvalSpec(
             input_fn=eval_input_fn, hooks=[val_log],
-            start_delay_secs=30,
+            start_delay_secs=self.delay_evaluation,
             throttle_secs=self.evaluate_every_n_seconds)
 
         tf.estimator.train_and_evaluate(self.estimator, train_spec, eval_spec)
@@ -642,8 +643,14 @@ def get_parser():
     parser.add_argument(
         '--evaluate_every_n_seconds',
         type=int,
-        default=20,
+        default=600,
         help='Cada cuántos segundos se debe evaluar el entrenamiento.'
+    )
+    parser.add_argument(
+        '--delay_evaluation',
+        type=int,
+        default=1200,
+        help='Cuántos segundos se debe retrasar el inicio de la evaluación.'
     )
     return parser
 
