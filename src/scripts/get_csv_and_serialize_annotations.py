@@ -88,10 +88,10 @@ if __name__ == "__main__":
         help="""\
         Directorio donde se guardarán los objetos Annotation serializados. En 
         caso de no entregar un valor, las anotaciones serán guardadas en la 
-        carpeta data/extras/ihc_slides/annotations_serialized.\
+        carpeta data/extras/ihc_slides/serialized_annotations.\
         """,
         default=os.path.join(os.getcwd(), "data", "extras",
-                             "ihc_slides", "annotations_serialized")
+                             "ihc_slides", "serialized_annotations")
     )
     PARSER.add_argument(
         '--csv_path',
@@ -99,10 +99,10 @@ if __name__ == "__main__":
         help="""\
         Ubicación donde se guardará el csv con la información sumarizada. En 
         caso de no entregar un valor, las anotaciones serán guardadas en la 
-        carpeta data/extras/ihc_slides/annotations_serialized/summary.csv.\
+        carpeta data/extras/ihc_slides/serialized_annotations/summary.csv.\
         """,
         default=os.path.join(os.getcwd(), "data", "extras",
-                             "ihc_slides", "annotations_serialized",
+                             "ihc_slides", "serialized_annotations",
                              "summary.csv")
     )
 
