@@ -130,9 +130,9 @@ def hub_bottleneck_model_fn(features, labels, mode, params):
     Returns:
         - tf.estimator.EstimatorSpec, la configuración dependerá del valor de
         mode:
-            - Si mode == PREDICT, se entregará un EstimatorSpec con predicciones,
-            un diccionario con llaves "classes" y "probabilities" y tensores
-            asociados correspondientes.
+            - Si mode == PREDICT, se entregará un EstimatorSpec con
+            predicciones, un diccionario con llaves "classes" y "probabilities"
+            y tensores asociados correspondientes.
             - Si mode == TRAIN, se entregará un EstimatorSpec con la función de
             pérdida y el optimizador.
             - Si mode == EVAL, se entregará un EstimatorSpec con la función de
