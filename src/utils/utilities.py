@@ -47,7 +47,8 @@ def show(img, title, fx, fy, close=True):
 
 def paintPoint(img, point, size, colour):
     diff = size // 2
-    img[point[0] - diff: point[0] + diff, point[1] - diff: point[1] + diff] = colour
+    img[point[0] - diff: point[0] + diff,
+        point[1] - diff: point[1] + diff] = colour
 
 
 def cleanFolder(folder, ignoreExt):

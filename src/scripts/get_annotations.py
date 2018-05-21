@@ -3,6 +3,7 @@ ndp.microscopiavirtual.com;
 """
 
 import os
+import getpass
 import argparse
 import requests
 from bs4 import BeautifulSoup
@@ -84,6 +85,16 @@ def get_biopsy_annotation(sess, biopsy_item_id):
     return annotation
 
 
+def is_logged_in(sess):
+    """Revisa si es que se inició correctamente sesión, verificando que la
+    cookie de SessionID sea distinta a un string vacío
+
+    Args:
+        - sess: requests.Session, tras haber intentado iniciar sesión.
+    """
+    return sess.cookies.get_dict()['SessionID'] != ""
+
+
 def main(username, password, folder_id, annotations_dir):
     """Inicia sesión en ndp.microscopiavirtual.com, obtiene un diccionario
     con los item ids y los nombres de las biopsias, y guarda las anotaciones
@@ -95,8 +106,16 @@ def main(username, password, folder_id, annotations_dir):
         folder_id: Id de la carpeta con biopsias.
         annotations_dir: Directorio donde se guardarán las anotaciones.
     """
-    os.makedirs(annotations_dir, exist_ok=True)
+    # Si es que no se ingresa nombre de usuario y/o contraseña, se solicita
+    # al usuario que lo ingrese
+    if username is None:
+        username = input("Username (ndp.microscopiavirtual.com): ")
+    if password is None:
+        password = getpass.getpass()
     sess = get_session(username, password)
+    if not is_logged_in(sess):
+        raise ValueError("Usuario o contraseña errónea")
+    os.makedirs(annotations_dir, exist_ok=True)
     dict_ids = get_biopsies_ids(sess, folder_id)
     for biopsy_item_id, biopsy_name in dict_ids.items():
         annotation = get_biopsy_annotation(sess, biopsy_item_id)
@@ -110,20 +129,20 @@ if __name__ == "__main__":
     PARSER.add_argument(
         '--username',
         type=str,
-        required=True,
-        help="Nombre de usuario en ndp.microscopiavirtual.com."
+        help="Nombre de usuario en ndp.microscopiavirtual.com.",
+        default=None
     )
     PARSER.add_argument(
         '--password',
         type=str,
-        required=True,
-        help="Contraseña en ndp.microscopiavirtual.com."
+        help="Contraseña en ndp.microscopiavirtual.com.",
+        default=None
     )
     PARSER.add_argument(
         '--folder_id',
         type=str,
         help="""\
-        Id de la carpeta con biopsias. Default: 10590, id de la carpeta 
+        Id de la carpeta con biopsias. Default: 10590, id de la carpeta
         Unidad de Investigación.\
         """,
         default="10590"
@@ -133,10 +152,11 @@ if __name__ == "__main__":
         type=str,
         help="""\
         Directorio donde se guardarán las anotaciones. En caso de no entregar
-        un valor, las anotaciones serán guardadas en la carpeta 
-        data/ndp_annotations.\
+        un valor, las anotaciones serán guardadas en la carpeta
+        data/extras/ihc_slides/annotations.\
         """,
-        default=os.path.join(os.getcwd(), "data", "ndp_annotations")
+        default=os.path.join(os.getcwd(), "data", "extras",
+                             "ihc_slides", "annotations")
     )
 
     FLAGS = PARSER.parse_args()
@@ -144,11 +164,3 @@ if __name__ == "__main__":
          FLAGS.folder_id, FLAGS.annotations_dir)
 
     # sess = get_session("MCerda", "7rU543qP")
-    # ids = get_biopsies_ids(sess)
-    # for key, value in ids.items():
-    #     print(key, value)
-    # for key in ids:
-    #     annotation = get_biopsy_annotation(sess, key)
-    #     import pdb
-    #     pdb.set_trace()  # breakpoint 2a120fee //
-    # print(2)

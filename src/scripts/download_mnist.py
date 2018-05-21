@@ -196,12 +196,12 @@ def test_labels():
     return download_and_parse_mnist_file('t10k-labels-idx1-ubyte.gz')
 
 
-def write_array_to_file(array, labels, partition, dst_dir):
+def write_array_to_file(np_array, labels, partition, dst_dir):
     """Escribe un arreglo de mnist, con sus respectivos arreglos,
     a archivo
     """
-    for i in range(len(array)):
-        np_image = array[i]
+    for i in range(len(np_array)):
+        np_image = np_array[i]
         label = labels[i]
         image = Image.fromarray(np_image)
 
@@ -211,6 +211,12 @@ def write_array_to_file(array, labels, partition, dst_dir):
 
 
 def main(save_dir):
+    """Descarga mnist, lo descomprime y lo guarda en save_dir, poniendo cada
+    imagen en una subcarpeta correspondiente a su etiqueta
+
+    Args:
+        - save_dir: str. Directorio donde se quiere guardar mnist.
+    """
     os.makedirs(save_dir, exist_ok=True)
     for label in range(10):
         os.makedirs(os.path.join(save_dir, str(label)), exist_ok=True)

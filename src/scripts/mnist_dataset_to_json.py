@@ -9,7 +9,12 @@ from ..dataset import data_utils
 
 
 def check_filesystem(flags):
+    """Crea variables si es que su valor es un string vacío, y crea los
+    directorios correspondientes.
 
+    Args:
+        flags: argparse.Namespace
+    """
     root_path = os.getcwd()
     _, images_dir_name = os.path.split(flags.images_dir)
     dict_partitions_path = os.path.join(root_path, "data",
@@ -25,6 +30,11 @@ def check_filesystem(flags):
 
 
 def main(flags):
+    """Crea un archivo json con las particiones de mnist.
+
+    Args:
+        - flags: argparse.Namespace
+    """
     np.random.seed(flags.random_seed)
     check_filesystem(flags)
     train_filenames, train_labels, labels_map = data_utils.\
