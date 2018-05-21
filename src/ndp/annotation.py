@@ -1,11 +1,11 @@
 """Métodos para parser una anotación de npdi y para extraer las regiones allí
 contenidas desde la imagen digitalizada correspondiente"""
 
-# import cv2
-# from . import ndpisplitWrapper
+import os
 import xml.etree.ElementTree as ET
 import openslide
 import numpy as np
+from . import ndpisplit_wrapper
 
 
 class Point2D:
@@ -67,19 +67,19 @@ class Point2D:
         nm_x_center_whole = self.x_coord
         nm_x_center_main = nm_x_center_whole - x_offset
         um_x_center_main = nm_x_center_main / 1000
-        pixels_x_main = um_x_center_main / (mpp_x * 1000)
-        pixels_x_top_corner = pixels_x_main / (width_l0 / 2)
+        pixels_x_center_main = um_x_center_main / mpp_x
+        pixels_x_top_left_corner = pixels_x_center_main + (width_l0 / 2)
 
         nm_y_center_whole = self.y_coord
         nm_y_center_main = nm_y_center_whole - y_offset
         um_y_center_main = nm_y_center_main / 1000
-        pixels_y_main = um_y_center_main / (mpp_y * 1000)
-        pixels_y_top_corner = pixels_y_main / (height_l0 / 2)
+        pixels_y_center_main = um_y_center_main / mpp_y
+        pixels_y_top_left_corner = pixels_y_center_main + (height_l0 / 2)
 
         if force_int:
-            pixels_x_top_corner = int(round(pixels_x_top_corner))
-            pixels_y_top_corner = int(round(pixels_y_top_corner))
-        return Point2D(pixels_x_top_corner, pixels_y_top_corner)
+            pixels_x_top_left_corner = int(round(pixels_x_top_left_corner))
+            pixels_y_top_left_corner = int(round(pixels_y_top_left_corner))
+        return Point2D(pixels_x_top_left_corner, pixels_y_top_left_corner)
 
     def move(self, delta_x, delta_y):
         """Crea un nuevo punto desplazado.
@@ -164,7 +164,7 @@ class CircularRegion:
             new_radius = int(new_radius)
         return CircularRegion(new_center, new_radius)
 
-    def bounding_box(self):
+    def get_bounding_box(self):
         """Crea una cuadro delimitador (bounding box) que contiene
         completamente a CircularRegion.
 
@@ -172,11 +172,11 @@ class CircularRegion:
             np.array(shape=(4,2), dtype='int64') que representa el bounding
             box de CircularRegion.
         """
-        corners = [self.center.move(-self.radius, -self.radius).toArray(),
-                   self.center.move(+self.radius, -self.radius).toArray(),
-                   self.center.move(-self.radius, +self.radius).toArray(),
-                   self.center.move(+self.radius, +self.radius).toArray()]
-        return np.array(corners)
+        corners = [self.center.move(-self.radius, -self.radius).as_list(),
+                   self.center.move(+self.radius, -self.radius).as_list(),
+                   self.center.move(-self.radius, +self.radius).as_list(),
+                   self.center.move(+self.radius, +self.radius).as_list()]
+        return np.array(corners, dtype='int64')
 
     def __str__(self):
         """Representación como string de una CircularRegion
@@ -235,7 +235,7 @@ class RectangularRegion:
 
         return RectangularRegion(new_points)
 
-    def bounding_box(self):
+    def get_bounding_box(self):
         """Crea una cuadro delimitador (bounding box) que contiene para
         RectangularRegion. En este caso, el bounding box corresponde a los
         mismos vértices que definen la RectangularRegion.
@@ -244,8 +244,8 @@ class RectangularRegion:
             np.array(shape=(4,2), dtype='int64') que representa el bounding
             box de RectangularRegion.
         """
-        corners = [p.toArray() for p in self.points]
-        return np.array(corners)
+        corners = [p.as_list() for p in self.points]
+        return np.array(corners, dtype='int64')
 
     def __str__(self):
         """Representación como string de una RectangularRegion.
@@ -255,6 +255,105 @@ class RectangularRegion:
         """
         string = [str(p) for p in self.points]
         return "\n".join(string)
+
+
+class Annotation:
+    """Clase que encapsula una anotación de NDP
+
+    Args:
+        - slide_name: str. Nombre de la biopsia a la que pertenece
+        la anotación.
+        - annotation_id: str. Id de la anotación, tal como está definida en
+        el archivo xml correspondiente.
+        - annotation_type: str. Tipo de anotación (circle, freehand, pin).
+        - owner: str. Autor de la anotación, tal como está definida en
+        el archivo xml correspondiente.
+        - title: str. Título de la anotación.
+        - details: str. Detalles añadidos a la anotación.
+        - region: CircularRegion o RectangularRegion: ROI asociado a la
+        anotación, en coordenadas físicas.
+
+    Return:
+        Annotation.
+    """
+
+    def __init__(self, slide_name, annotation_id, annotation_type,
+                 title="", owner="", details="", region=None):
+        self.slide_name = slide_name
+        self.annotation_id = annotation_id
+        self.annotation_type = annotation_type
+        self.title = title
+        self.owner = owner
+        self.details = details
+        self.physical_region = region
+
+    def extract_region_from_ndpi(self, slide_path, slide_magnification="x40"):
+        """Extrae la región contenida en la anotación desde un slide ndpi y la
+        guarda en disco.
+
+        Lamentablemente, ndpisplit no da la opción de dónde guardar la imagen
+        extraída, por lo cual siempre es guardada en el mismo directorio donde
+        reside la slide original.
+
+        Args:
+            - slide_path: str. Ubicación de la slide ndpi.
+            - slide_magnification: str. Magnificación a la cual se quiere
+            extraer la imagen (x5, x10, x20, x40).
+        """
+
+        x_offset, y_offset, mpp_x, mpp_y, \
+            width_l0, height_l0 = get_properties_ndpi(slide_path)
+        pixels_region = self.physical_region.to_pixels(
+            x_offset, y_offset, mpp_x, mpp_y, width_l0, height_l0)
+
+        bounding_box = pixels_region.get_bounding_box()
+        (x_coord, y_coord, width, height) = get_top_left_and_size(bounding_box)
+
+        ndpisplit_wrapper.extract_region(slide_path, x_coord, y_coord,
+                                         width, height,
+                                         magnification=slide_magnification,
+                                         zlevel="z0",
+                                         label=self.annotation_id)
+
+
+def create_annotation_from_view(view, slide_name):
+    """Crea una anotación a partir de un nodo xml de tipo ndpviewstate.
+
+    Args:
+        - view: xml.etree.ElementTree.Element, nodo de la anotación xml de
+        tipo ndpviewstate.
+        - slide_name: str. Nombre de la biopsia.
+    """
+    annotation_id = view.get('id')
+    owner = view.get('owner')
+    title = view.find("title").text
+    details = view.find("details").text
+    annotation_region = view.find("annotation")
+    annotation_type = annotation_region.attrib["type"]
+    if annotation_type == "circle":
+        x_coord = float(annotation_region.find('x').text)
+        y_coord = float(annotation_region.find('y').text)
+        radius = float(annotation_region.find('radius').text)
+        region = CircularRegion(Point2D(x_coord, y_coord), radius)
+    elif annotation_type == "freehand":
+        points = annotation_region.findall('pointlist/point')
+        if len(points) != 4:
+            error_message = """\
+            Anotación {id} de biopsia {b_name} es de tipo freehand,
+            pero tiene más de cuatro puntos, lo cual no está soportado
+            """.format(id=annotation_id, b_name=slide_name)
+            raise ValueError(error_message)
+        corners = []
+        for point in points:
+            x_coord = float(point.findall('x')[0].text)
+            y_coord = float(point.findall('y')[0].text)
+            corners.append(Point2D(x_coord, y_coord))
+        region = RectangularRegion(corners)
+    else:
+        region = None
+
+    return Annotation(slide_name, annotation_id, annotation_type,
+                      title=title, owner=owner, details=details, region=region)
 
 
 def get_top_left_and_size(box):
@@ -277,117 +376,7 @@ def get_top_left_and_size(box):
     width = x_max - x_min
     height = y_max - y_min
     coords = [x_min, y_min, width, height]
-    # coords = map(lambda x: int(round(x)), coords)
     return coords
-
-
-def get_region_from_view(view):
-    """Extrae las regiones desde un nodo xml de tipo ndpviewstate.
-
-    Args:
-        - view: xml.etree.ElementTree.Element, nodo de la anotación xml de
-        tipo ndpviewstate.
-
-    Return:
-        CircularRegion o RectangularRegion; la región descrita en la anotación
-        de ese ndpviewstate.
-
-    Raises:
-        ValueError, si es que el tipo de la anotación no es circle ni
-        freehand.
-    """
-
-    annotation = view.find('annotation')
-    a_type = annotation.attrib['type']
-    if a_type == "circle":
-        x_coord = float(annotation.find('x').text)
-        y_coord = float(annotation.find('y').text)
-        radius = float(annotation.find('radius').text)
-        return CircularRegion(Point2D(x_coord, y_coord), radius)
-    elif a_type == "freehand":
-        points = view.findall('annotation/pointlist/point')
-        corners = []
-        for point in points:
-            x_coord = float(point.findall('x')[0].text)
-            y_coord = float(point.findall('y')[0].text)
-            corners.append(Point2D(x_coord, y_coord))
-        return RectangularRegion(corners)
-    else:
-        raise ValueError("Tipo " + a_type + " no soportado; sólo están" +
-                         " soportados circle y freehand")
-
-
-def get_info_from_view(view):
-    """Extrae la id de la anotación, su autor y los detalles de ésta desde un
-    nodo xml de tipo ndpviewstate.
-
-    Args:
-        - view: xml.etree.ElementTree.Element, nodo de la anotación xml de
-        tipo ndpviewstate.
-
-    Return:
-        tuple(str, str, str), que contiene la id de la anotación, su autor y
-        los detalles añadidos por el autor (potencialmente, el diagnóstico HER2
-        de la región).
-    """
-    annotation_id = view.get('id')
-    owner = view.get('owner')
-    details = view.find("details").text
-
-    return (annotation_id, owner, details)
-
-
-def get_all_annotations_from_xml(xml_path, ndpi_path=None):
-    """Obtiene todas las anotaciones de un xml, incluyendo su id, autor,
-    detalle y región asociaada
-
-    Args:
-        - xml_path: str. Ubicación del xml con anotaciones ndp
-        - ndpi_path: str. Ubicación de la imagen ndpi correspondiente.  En caso
-        de que este valor sea distinto de None, en cada anotación se agregará
-        una región transformada a pixeles.
-
-    Returns:
-        dict[str: dict[str:str, str:str,
-                       str:CircularRegion | RectangularRegion,
-                       str:CircularRegion | RectangularRegion // opcional
-                      ]
-            ].
-        Diccionario con todas las anotaciones obtenidas desde xml_path, con la
-        siguiente estructura:
-        {
-            annotation_id_1:
-                {
-                    "owner": owner, // string con autor
-                    "details": details, // string con detalle
-                    "physical_region": region // CircularRegion o
-                        RectangularRegion
-                    "pixel_region": region // CircularRegion o
-                        RectangularRegion, opcional, sólo si es que
-                        ndpi_path != None.
-                }
-            ...
-        }
-    """
-    tree = ET.parse(xml_path)
-    ndp_views = tree.findall('ndpviewstate')
-    regions_and_info = {}
-    if ndpi_path is not None:
-        x_offset, y_offset, mpp_x, mpp_y, \
-            width_l0, height_l0 = get_properties_ndpi(ndpi_path)
-
-    for view in ndp_views:
-        annotation_id, owner, details = get_info_from_view(view)
-        physical_region = get_region_from_view(view)
-        sub_dict = {}
-        sub_dict["owner"] = owner
-        sub_dict["details"] = details
-        sub_dict["physical_region"] = physical_region
-        if ndpi_path is not None:
-            sub_dict["pixel_region"] = physical_region.to_pixels(
-                x_offset, y_offset, mpp_x, mpp_y, width_l0, height_l0)
-        regions_and_info[annotation_id] = sub_dict
-    return regions_and_info
 
 
 def get_properties_ndpi(ndpi_path):
@@ -418,18 +407,26 @@ def get_properties_ndpi(ndpi_path):
     return x_offset, y_offset, mpp_x, mpp_y, width_l0, height_l0
 
 
-# if __name__ == "__main__":
-#     pathXML = "/home/juanjo/U/2017/Tesis/Código/cellsFromAnnotations/annotation.xml"
-#     pathNDPI = "/home/juanjo/U/2017/Tesis/Scaneos/IHQ/3/10/10.ndpi"
-#     physical_regions = get_regions_from_xml(pathXML)
-#     x_offset, y_offset, mpp_x, mpp_y, width_L0, height_L0 = get_properties_ndpi(
-#         pathNDPI)
-#     pixels_regions = [r.to_pixels(x_offset, y_offset, mpp_x,
-#                                   mpp_y, width_L0, height_L0,
-#                                   force_int=True)
-#                       for r in physical_regions]
+def get_all_annotations_from_xml(xml_path):
+    """Obtiene todas las anotaciones de un xml, incluyendo su id, autor,
+    detalle y región asociaada
 
-#     for r in pixels_regions:
-#         bb = r.bounding_box()
-#         x, y, w, h = get_coordinates_from_bb(bb)
-#         ndpisplitWrapper.extractRegion(pathNDPI, x, y, w, h)
+    Args:
+        - xml_path: str. Ubicación del xml con anotaciones ndp
+        - ndpi_path: str. Ubicación de la imagen ndpi correspondiente.  En caso
+        de que este valor sea distinto de None, en cada anotación se agregará
+        una región transformada a pixeles.
+
+    Returns:
+        list[Annotation], con todas las anotaciones en el archivo xml
+    """
+
+    _, slide_name_and_ext = os.path.split(xml_path)
+    slide_name, _ = os.path.splitext(slide_name_and_ext)
+    tree = ET.parse(xml_path)
+
+    ndp_views = tree.findall('ndpviewstate')
+    all_annotations = []
+    for view in ndp_views:
+        all_annotations.append(create_annotation_from_view(view, slide_name))
+    return all_annotations
