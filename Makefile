@@ -58,7 +58,7 @@ clear_test_with_bottlenecks: clear_test
 ####################### GENERATE DATASET ####################################
 MAGNIFICATION = "x40"
 DASASET_SLIDES = ihc_slides
-DATASET_ROIS = ihc_rois
+DATASET_ROIS = ihc_rois_$(MAGNIFICATION)
 DATASET_PATCHES = ihc_patches_$(MAGNIFICATION)
 
 data/extras/$(DASASET_SLIDES)/annotations:
@@ -90,17 +90,21 @@ data/processed/$(DATASET_PATCHES): data/interim/$(DATASET_ROIS)
 		--patches_width 300 \
 		--stride_rows 50 \
 		--stride_columns 50
+	$(PYTHON_BIN) -m src.scripts.remove_useless_patches \
+		--patches_dir $@ \
+		--kib_min_size 10.7
+
 
 
 
 clear_rois:
 	rm -r data/extras/$(DASASET_SLIDES)/annotations  || true
-	rm -r data/extras/$(DASASET_SLIDES)/annotations_serialized  || true
-	rm -r data/interim/$(DATASET_ROIS)
-	rm -r data/processed/$(DATASET_PATCHES)
+	rm -r data/extras/$(DASASET_SLIDES)/serialized_annotations  || true
+	rm -r data/interim/$(DATASET_ROIS) || true
+	rm -r data/processed/$(DATASET_PATCHES) || true
 
 
-extract_rois: data/extras/$(DASASET_SLIDES)/serialized_annotations
+extract_patches: data/processed/$(DATASET_PATCHES)
 	echo "hola"
 
 	
