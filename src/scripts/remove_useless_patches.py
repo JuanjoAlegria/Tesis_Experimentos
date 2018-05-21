@@ -17,7 +17,7 @@ def maybe_delete_file(file_path, min_size):
         contrario.
     """
     bytes_size = os.path.getsize(file_path)
-    if bytes_size < bytes_size:
+    if bytes_size < min_size:
         os.remove(file_path)
         return True
     return False
@@ -42,6 +42,7 @@ def main(patches_base_dir, kib_min_size):
         por 2**10 (1024) para transformarlo a una cantidad en bytes.
     """
     bytes_min_size = kib_min_size * 1024
+    n_deleted = 0
     for label in os.listdir(patches_base_dir):
         label_dir = os.path.join(patches_base_dir, str(label))
         if not os.path.isdir(label_dir):
@@ -50,7 +51,10 @@ def main(patches_base_dir, kib_min_size):
             if ".jpg" not in image_name:
                 continue
             image_path = os.path.join(label_dir, image_name)
-            maybe_delete_file(image_path, bytes_min_size)
+            deleted = maybe_delete_file(image_path, bytes_min_size)
+            if deleted:
+                n_deleted += 1
+    print("Eliminadas", n_deleted, "imágenes")
 
 if __name__ == "__main__":
     PARSER = argparse.ArgumentParser()
@@ -76,4 +80,4 @@ if __name__ == "__main__":
     )
 
     FLAGS = PARSER.parse_args()
-    main(FLAGS.patches_base_dir, FLAGS.kib_min_size):
+    main(FLAGS.patches_dir, FLAGS.kib_min_size)
