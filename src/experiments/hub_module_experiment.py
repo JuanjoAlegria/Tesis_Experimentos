@@ -432,6 +432,23 @@ def get_module_url(model_name):
 
 
 def build_logging_tensor_hook(tensors_names):
+    """Contruye un LoggingTensorHook a partir de los nombres de tensores
+    entregados.
+
+    Args:
+        - tensors_names: list[str]. Nombre de los tensores que se desea
+        loggear. Opciones válidas son:
+            - loss
+            - global_step
+            - filenames
+            - images
+            - has_prev_bottlenecks
+            - write_bottlenecks
+
+    Returns:
+        tf.train.LoggingTensorHook, configura para loggear los tensores
+        pedidos en cada interación.
+    """
     tensors_real_names = [name + ":0" for name in tensors_names]
     tensors_dict = {display_name: real_name
                     for display_name, real_name in zip(tensors_names,
