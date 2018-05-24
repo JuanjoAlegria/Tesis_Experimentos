@@ -109,7 +109,7 @@ def generate_partition(filenames, labels, percentages):
         filenames.
         - percentages: list[int]. Porcentajes a utilizar para particionar el
         conjunto. La suma de percentages debe ser igual a 100.
-    Returns: 
+    Returns:
         list[tuples]. N tuplas, donde N = len(percentages). Particiones
         obtenidas.
     """
@@ -228,9 +228,6 @@ def dump_dataset(dataset_path, train_filenames, train_labels,
 
 
 def check_integrity_dumped_dataset(dataset_path, labels_map):
-    import pdb
-    pdb.set_trace()  # breakpoint 18dd6e27 //
-
     """Chequea la integridad de un dataset en formato json guardado en disco
 
     Args:
