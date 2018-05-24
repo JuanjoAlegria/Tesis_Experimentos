@@ -1,3 +1,6 @@
+"""Script para generar un dataset en formato JSON"
+"""
+
 import os
 import argparse
 import numpy as np
@@ -6,6 +9,20 @@ from ...dataset import data_utils
 
 def main(images_dir, dataset_path,
          test_percentage, validation_percentage, random_seed):
+    """Genera un archivo JSON con los nombres de los archivos que conforman
+    un dataset.
+
+    Args:
+        - images_dir: str. Directorio donde se encuentran las imágenes.
+        - dataset_path: str. Ubicación donde guardar el dataset en formato
+        json.
+        - validation_percentage: int. Porcentaje de imágenes del conjunto de
+        entrenamiento que serán utilizadas como conjunto de validación.
+        - test_percentage: int. Porcentaje de imágenes del conjunto de
+        entrenamiento que serán utilizadas como conjunto de prueba.
+        - random_seed: int. Semilla aleatoria (útil para obteer resultados
+        reproducibles)
+    """
     # Obtenemos todos los archivos
     np.random.seed(random_seed)
     dataset_dir, _ = os.path.split(dataset_path)
@@ -48,7 +65,7 @@ if __name__ == "__main__":
         '--validation_percentage',
         type=int,
         default=10,
-        help="""\
+        help="""
         Porcentaje de imágenes del conjunto de entrenamiento que serán
         utilizadas como conjunto de validación.
         """
@@ -57,7 +74,7 @@ if __name__ == "__main__":
         '--test_percentage',
         type=int,
         default=10,
-        help="""\
+        help="""
         Porcentaje de imágenes del conjunto de entrenamiento que serán
         utilizadas como conjunto de prueba.
         """
