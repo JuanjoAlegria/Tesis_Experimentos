@@ -15,9 +15,6 @@ def main(images_dir, dataset_path,
     filenames, labels, labels_map = data_utils.get_filenames_and_labels(
         images_dir)
     datasets = data_utils.generate_partition(filenames, labels, percentages)
-    import pdb
-    pdb.set_trace()  # breakpoint 20ca7c1f //
-
     train_filenames, train_labels = datasets[0]
     validation_filenames, validation_labels = datasets[1]
     test_filenames, test_labels = datasets[2]
