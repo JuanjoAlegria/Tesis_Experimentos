@@ -7,7 +7,7 @@ import numpy as np
 FULL_DATASET = "all"
 
 
-def get_filenames_and_labels(data_dir, partition,
+def get_filenames_and_labels(data_dir, partition=FULL_DATASET,
                              labels_to_indexes=False, labels_map=None,
                              max_files=-1):
     """Obtiene los nombres de los archivos en un directorio y las etiquetas
@@ -99,7 +99,42 @@ def get_filenames_and_labels(data_dir, partition,
     return filenames, labels, labels_map
 
 
-def generate_partition(filenames, labels, proportion):
+def generate_partition(filenames, labels, percentages):
+    """Particiona un conjunto en n subconjuntos.
+
+    Args:
+        - filenames: list[str]. Lista con los nombres de los archivos que son
+        parte del conjunto de entramiento.
+        - labels: list[int]. Lista con etiquetas numéricas, correlativas a
+        filenames.
+        - percentages: list[int]. Porcentajes a utilizar para particionar el
+        conjunto. La suma de percentages debe ser igual a 100.
+    Returns: 
+        list[tuples]. N tuplas, donde N = len(percentages). Particiones
+        obtenidas.
+    """
+    if sum(percentages) != 100:
+        error_msg = "La suma de las porcentajes debe ser igual a 100," + \
+            "pero la suma calculada fue {value}".format(value=sum(percentages))
+        raise ValueError(error_msg)
+    permutation = np.random.permutation(len(filenames))
+    filenames, labels = filenames[permutation], labels[permutation]
+    result = []
+    prev_index = 0
+    for index, percentage in enumerate(percentages):
+        if index == len(percentages) - 1:
+            current_index = len(filenames)
+        else:
+            n_files = int(len(filenames) * (percentage / 100))
+            current_index = prev_index + n_files
+        current_filenames = filenames[prev_index: current_index]
+        current_labels = labels[prev_index: current_index]
+        result.append((current_filenames, current_labels))
+        prev_index = current_index
+    return result
+
+
+def generate_binary_partition(filenames, labels, percentage):
     """ Crea un conjunto de validación a partir del conjunto de entrenamiento.
 
     Args:
@@ -107,7 +142,7 @@ def generate_partition(filenames, labels, proportion):
         parte del conjunto de entramiento.
         - labels: list[int]. Lista con etiquetas numéricas, correlativas a
         filenames.
-        - proportion: int, 0 < proportion <= 100. Porcentaje del
+        - percentage: int, 0 < percentage <= 100. Porcentaje del
         conjunto de entrenamiento que debe usarse para contruir el conjunto de
         validación.
     Returns:
@@ -117,12 +152,12 @@ def generate_partition(filenames, labels, proportion):
         lista de nombres de archivo y el segundo elemento es una lista con las
         etiquetas.
     """
-    if proportion <= 0 or proportion > 100:
-        error_msg = "proportion debe estar entre 0 y 100" + \
-            " y el valor entregado fue {value}".format(value=proportion)
+    if percentage <= 0 or percentage > 100:
+        error_msg = "percentage debe estar entre 0 y 100" + \
+            " y el valor entregado fue {value}".format(value=percentage)
         raise ValueError(error_msg)
 
-    n_files = int(len(filenames) * (proportion / 100))
+    n_files = int(len(filenames) * (percentage / 100))
     permutation = np.random.permutation(len(filenames))
 
     filenames, labels = filenames[permutation], labels[permutation]
@@ -157,8 +192,7 @@ def write_labels_map(labels_map, filename):
 
 def dump_dataset(dataset_path, train_filenames, train_labels,
                  validation_filenames, validation_labels,
-                 test_filenames, test_labels,
-                 check_integrity=True):
+                 test_filenames, test_labels):
     """Escribe a disco un archivo json con los nombres de los archivos
     correspondientes a cada partición y sus etiquetas correspondientes.
 
@@ -194,6 +228,9 @@ def dump_dataset(dataset_path, train_filenames, train_labels,
 
 
 def check_integrity_dumped_dataset(dataset_path, labels_map):
+    import pdb
+    pdb.set_trace()  # breakpoint 18dd6e27 //
+
     """Chequea la integridad de un dataset en formato json guardado en disco
 
     Args:
