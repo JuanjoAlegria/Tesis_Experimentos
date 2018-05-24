@@ -7,7 +7,7 @@ import os
 import re
 import argparse
 import pandas as pd
-from ..utils import image
+from ...utils import image
 
 ANNOTATIONS_INFO_SHEET = 1
 CROSSED_INFO_SHEET = 2
@@ -20,7 +20,7 @@ ANNOTATION_OWNER_COLUMN = "Autor anotación"
 ANNOTATION_LABEL_COLUMN = "Detalles anotación"
 
 SLIDES_NAME_PATTERN = r"229-UCH-(\d*)-IDA"
-ANNOTATIONS_NAME_PATTERN = r"(\d*)_x(\d*)_z0_(\d*).jpg"
+ANNOTATIONS_NAME_PATTERN = r"(\d*)_x(\d*)_z0_(\d*)"
 
 
 def get_valid_slides_ids(excel_file):
@@ -116,8 +116,11 @@ def main(excel_file, rois_dir, patches_dir, valid_owners,
 
     n_rois = 0
     n_patches = 0
-    for roi_name in os.listdir(rois_dir):
-        if not ".jpg" in roi_name:
+
+    for roi_name_and_ext in os.listdir(rois_dir):
+        roi_name, roi_ext = os.path.splitext(roi_name_and_ext)
+
+        if roi_ext != ".jpg":
             continue
         slide_id, annotation_id = get_info_from_roi_name(roi_name)
         if slide_id not in valid_slides_ids:
@@ -126,7 +129,7 @@ def main(excel_file, rois_dir, patches_dir, valid_owners,
             continue
         label = valid_annotations[annotation_id]
         current_dst_dir = os.path.join(patches_dir, label)
-        roi_path = os.path.join(rois_dir, roi_name)
+        roi_path = os.path.join(rois_dir, roi_name_and_ext)
         patches = image.extract_patches(roi_path, patches_height,
                                         patches_width, stride_rows,
                                         stride_columns)

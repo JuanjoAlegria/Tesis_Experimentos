@@ -7,7 +7,7 @@ import re
 import glob
 import pickle
 import argparse
-from ..utils import image
+from ...utils import image
 
 
 def move_and_convert_rois(src_dir, dst_dir):

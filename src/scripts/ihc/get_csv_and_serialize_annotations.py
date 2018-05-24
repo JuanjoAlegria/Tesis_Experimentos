@@ -5,7 +5,7 @@ import os
 import csv
 import pickle
 import argparse
-from ..ndp import annotation
+from ...ndp import annotation
 
 
 def write_csv(annotations_list, csv_path):

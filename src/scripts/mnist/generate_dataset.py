@@ -5,7 +5,7 @@ de mnist
 import os
 import argparse
 import numpy as np
-from ..dataset import data_utils
+from ...dataset import data_utils
 
 
 def check_filesystem(flags):
@@ -48,8 +48,8 @@ def main(flags):
 
     (train_filenames, train_labels), \
         (validation_filenames, validation_labels) = data_utils.\
-        generate_partition(train_filenames, train_labels,
-                           flags.validation_proportion)
+        generate_binary_partition(train_filenames, train_labels,
+                                  flags.validation_proportion)
 
     data_utils.dump_dataset(flags.dataset_path,
                             train_filenames.tolist(),
