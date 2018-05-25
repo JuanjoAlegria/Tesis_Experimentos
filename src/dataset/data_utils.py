@@ -35,6 +35,9 @@ def get_filenames_and_labels(data_dir, partition=FULL_DATASET,
     virginica), esta función se encarga de transformar las etiquetas de strings
     a números y entrega un diccionario con el mapeo correspondiente.
 
+    Para asegurar reprdocubilidad entre distintas máquinas, los arreglos
+    filenames y labels son ordenados antes de ser retornados.
+
     Args:
         - data_dir: string. Directorio donde buscar las imágenes
         partition: string. Indica qué tipo de imágenes queremos buscar
@@ -54,7 +57,7 @@ def get_filenames_and_labels(data_dir, partition=FULL_DATASET,
         - filenames: list[str]. Lista con los nombres de los archivos en
         formato label/filename.jpg. Notar que, en este caso, label corresponde
         a la etiqueta sin transformar (e.g, acá label si puede ser setosa o
-        versicolor).
+        versicolor). 
         - labels: list[int]. Lista con las etiquetas correspondientes
         convertidas a enteros. Correlativo con filenames.
         - labels_map: dict[str: int]. Diccionario con el mapeo entre etiquetas
@@ -90,6 +93,11 @@ def get_filenames_and_labels(data_dir, partition=FULL_DATASET,
                 labels.append(labels_map[label])
 
     filenames, labels = np.array(filenames), np.array(labels)
+    # Ordenamos los arreglos
+    argsort_permutation = np.argsort(filenames)
+    filenames = filenames[argsort_permutation]
+    labels = labels[argsort_permutation]
+
     if max_files > -1:
         permutation = np.random.choice(len(filenames), size=max_files,
                                        replace=False)
