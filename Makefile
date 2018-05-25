@@ -1,7 +1,7 @@
 ENV = cpu
 PYTHON_BIN = python3
 RANDOM_SEED = 1234
-MODEL_NAME_TEST = inception_v3
+MODEL_NAME = inception_v3
 TEST_EXPERIMENT_NAME = mnist_test_experiment
 
 ######################### TEST EXPERIMENT ####################################
@@ -26,7 +26,7 @@ ifeq ($(ENV), cpu)
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
 		--num_epochs 20 \
-		--model_name $(MODEL_NAME_TEST) \
+		--model_name $(MODEL_NAME) \
 		--remove_prev_ckpts_and_logs \
 		--evaluate_every_n_seconds 30 \
 		--tensors_to_log_train loss global_step \
@@ -38,7 +38,7 @@ else
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
 		--num_epochs 1000 \
-		--model_name $(MODEL_NAME_TEST) \
+		--model_name $(MODEL_NAME) \
 		--remove_prev_ckpts_and_logs \
 		--evaluate_every_n_seconds 600 \
 		--tensors_to_log_train loss global_step \
@@ -53,14 +53,14 @@ clear_test:
 	rm -r saved_models/$(TEST_EXPERIMENT_NAME) || true
 
 clear_test_with_bottlenecks: clear_test
-	rm -r data/bottlenecks/$(MODEL_NAME_TEST)/mnist || true
+	rm -r data/bottlenecks/$(MODEL_NAME)/mnist || true
 
 ####################### PATCHES EXPERIMENT ####################################
 MAGNIFICATION = x40
 DASASET_SLIDES = ihc_slides
 DATASET_ROIS = ihc_rois_$(MAGNIFICATION)
 DATASET_PATCHES = ihc_patches_$(MAGNIFICATION)
-
+PATCHES_EXPEIMENT_NAME = ihc_patches_experiment
 data/extras/$(DASASET_SLIDES)/annotations:
 # Pedirá que ingrese Usuario y contraseña para ndp.microscopiavirtual.com
 	$(PYTHON_BIN) -m src.scripts.ihc.get_annotations \
@@ -113,8 +113,15 @@ clear_patches_experiment:
 	rm -r data/processed/$(DATASET_PATCHES) || true
 	rm -r data/partitions_json/$(DATASET_PATCHES) || true
 
-
-extract_patches: data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
-	echo "hola"
-
-	
+patches_experiment: data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
+	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
+		--experiment_name $(PATCHES_EXPEIMENT_NAME) \
+		--images_dir data/processed/$(DATASET_PATCHES) \
+		--random_seed $(RANDOM_SEED) \
+		--dataset_json $< \
+		--num_epochs 4000 \
+		--model_name $(MODEL_NAME) \
+		--remove_prev_ckpts_and_logs \
+		--evaluate_every_n_seconds 600 \
+		--tensors_to_log_train loss global_step \
+		--save_checkpoints_steps 100
