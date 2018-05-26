@@ -247,27 +247,28 @@ def hub_bottleneck_model_fn(features, labels, mode, params):
                                           export_outputs=export_outputs)
     predictions["real_classes"] = labels
     # Calculamos la función de pérdida (para modos TRAIN y EVAL)
-    loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
-    loss = tf.identity(loss, "loss")
+    loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits,
+                                                  scope="my_loss")
+    # loss = tf.identity(loss, "loss")
     # Añadimos métricas de evaluación (para modo EVAL)
-    accuracy = tf.metrics.accuracy(labels=labels, predictions=classes,
-                                   name="accuracy")
+    accuracy = tf.metrics.accuracy(labels=labels, predictions=classes)
 
-    eval_metric_ops = {"accuracy": accuracy}
+    eval_metric_ops = {"my_accuracy": accuracy}
+
     # Nos aseguramos de agregarlas al reporte de TensorBoard
-    tf.summary.scalar('loss', loss)
-    tf.summary.scalar('accuracy', accuracy[0])
+    # tf.summary.scalar('loss', loss)
 
     # Configuramos las operaciones de entrenamiento (para el modo TRAIN)
     if mode == tf.estimator.ModeKeys.TRAIN:
+        tf.summary.scalar('my_accuracy', accuracy[1])
+        tf.summary.merge_all()
         optimizer = tf.train.GradientDescentOptimizer(
             learning_rate=learning_rate)
         train_op = optimizer.minimize(
             loss=loss,
             global_step=tf.train.get_global_step())
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss,
-                                          train_op=train_op,
-                                          eval_metric_ops=eval_metric_ops)
-
+                                          train_op=train_op)
+    tf.summary.merge_all()
     return tf.estimator.EstimatorSpec(
         mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
