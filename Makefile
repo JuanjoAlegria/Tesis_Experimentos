@@ -40,7 +40,6 @@ else
 		--num_epochs 1000 \
 		--model_name $(MODEL_NAME) \
 		--remove_prev_ckpts_and_logs \
-		--evaluate_every_n_seconds 600 \
 		--tensors_to_log_train global_step loss filenames \
 		--save_checkpoints_steps 50 \
 		--eval_frequency 50
@@ -61,7 +60,7 @@ MAGNIFICATION = x40
 DASASET_SLIDES = ihc_slides
 DATASET_ROIS = ihc_rois_$(MAGNIFICATION)
 DATASET_PATCHES = ihc_patches_$(MAGNIFICATION)
-PATCHES_EXPEIMENT_NAME = ihc_patches_experiment
+PATCHES_EXPEIMENT_NAME = ihc_patches_experiment_2
 data/extras/$(DASASET_SLIDES)/annotations:
 # Pedirá que ingrese Usuario y contraseña para ndp.microscopiavirtual.com
 	$(PYTHON_BIN) -m src.scripts.ihc.get_annotations \
@@ -123,6 +122,6 @@ patches_experiment: data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 		--num_epochs 4000 \
 		--model_name $(MODEL_NAME) \
 		--remove_prev_ckpts_and_logs \
-		--evaluate_every_n_seconds 600 \
 		--tensors_to_log_train loss global_step \
-		--save_checkpoints_steps 100
+		--save_checkpoints_steps 100 \
+		--eval_frequency 100
