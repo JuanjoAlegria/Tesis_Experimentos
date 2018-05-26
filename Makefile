@@ -28,9 +28,9 @@ ifeq ($(ENV), cpu)
 		--num_epochs 20 \
 		--model_name $(MODEL_NAME) \
 		--remove_prev_ckpts_and_logs \
-		--evaluate_every_n_seconds 30 \
-		--tensors_to_log_train loss global_step \
-		--save_checkpoints_steps 10
+		--tensors_to_log_train global_step loss filenames \
+		--save_checkpoints_steps 5 \
+		--eval_frequency 5
 else
 	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
 		--experiment_name $(TEST_EXPERIMENT_NAME) \
@@ -41,15 +41,16 @@ else
 		--model_name $(MODEL_NAME) \
 		--remove_prev_ckpts_and_logs \
 		--evaluate_every_n_seconds 600 \
-		--tensors_to_log_train loss global_step \
-		--save_checkpoints_steps 100
+		--tensors_to_log_train global_step loss filenames \
+		--save_checkpoints_steps 50 \
+		--eval_frequency 50
 endif
 
 clear_test:
 	rm -r data/raw/mnist || true
 	rm -r data/partitions_json/mnist || true
 	rm -r logs_and_checkpoints/$(TEST_EXPERIMENT_NAME) || true
-	rm -r results/$(TEST_EXPERIMENT_NAME)
+	rm -r results/$(TEST_EXPERIMENT_NAME) || true
 	rm -r saved_models/$(TEST_EXPERIMENT_NAME) || true
 
 clear_test_with_bottlenecks: clear_test
