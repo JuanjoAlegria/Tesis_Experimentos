@@ -7,6 +7,22 @@ import numpy as np
 FULL_DATASET = "all"
 
 
+def shuffle_dataset(features, labels):
+    """Reordena aleatoriamente un dataset.
+
+    Args:
+        features: np.array, arreglo con features
+        labels: np.array, arreglo con labels, correlativas a features.
+
+    Returns:
+        np.array, np.array: arreglos reordenados aleatoriamente
+    """
+    permutation = np.random.permutation(len(features))
+    shuffled_features = features[permutation]
+    shuffled_labels = labels[permutation]
+    return shuffled_features, shuffled_labels
+
+
 def get_filenames_and_labels(data_dir, partition=FULL_DATASET,
                              labels_to_indexes=False, labels_map=None,
                              max_files=-1):
@@ -107,16 +123,15 @@ def get_filenames_and_labels(data_dir, partition=FULL_DATASET,
     return filenames, labels, labels_map
 
 
-def generate_partition(filenames, labels, percentages):
+def generate_partition(features, labels, percentages):
     """Particiona un conjunto en n subconjuntos.
 
     Args:
-        - filenames: list[str]. Lista con los nombres de los archivos que son
-        parte del conjunto de entramiento.
-        - labels: list[int]. Lista con etiquetas numéricas, correlativas a
-        filenames.
+        - features: np.array. Lista con features a utilizar.
+        - labels: np.array. Lista con etiquetas, correlativas a features.
         - percentages: list[int]. Porcentajes a utilizar para particionar el
         conjunto. La suma de percentages debe ser igual a 100.
+
     Returns:
         list[tuples]. N tuplas, donde N = len(percentages). Particiones
         obtenidas.
@@ -125,31 +140,31 @@ def generate_partition(filenames, labels, percentages):
         error_msg = "La suma de las porcentajes debe ser igual a 100," + \
             "pero la suma calculada fue {value}".format(value=sum(percentages))
         raise ValueError(error_msg)
-    permutation = np.random.permutation(len(filenames))
-    filenames, labels = filenames[permutation], labels[permutation]
+    permutation = np.random.permutation(len(features))
+    features, labels = features[permutation], labels[permutation]
     result = []
     prev_index = 0
     for index, percentage in enumerate(percentages):
         if index == len(percentages) - 1:
-            current_index = len(filenames)
+            current_index = len(features)
         else:
-            n_files = int(len(filenames) * (percentage / 100))
+            n_files = int(len(features) * (percentage / 100))
             current_index = prev_index + n_files
-        current_filenames = filenames[prev_index: current_index]
+        current_features = features[prev_index: current_index]
         current_labels = labels[prev_index: current_index]
-        result.append((current_filenames, current_labels))
+        result.append((current_features, current_labels))
         prev_index = current_index
     return result
 
 
-def generate_binary_partition(filenames, labels, percentage):
+def generate_validation_set(train_filenames, train_labels, percentage):
     """ Crea un conjunto de validación a partir del conjunto de entrenamiento.
 
     Args:
-        - filenames: list[str]. Lista con los nombres de los archivos que son
-        parte del conjunto de entramiento.
-        - labels: list[int]. Lista con etiquetas numéricas, correlativas a
-        filenames.
+        - train_filenames: list[str]. Lista con los nombres de los archivos
+        que son parte del conjunto de entramiento.
+        - train_labels: list[int]. Lista con etiquetas numéricas, correlativas
+        a train_filenames.
         - percentage: int, 0 < percentage <= 100. Porcentaje del
         conjunto de entrenamiento que debe usarse para contruir el conjunto de
         validación.
@@ -165,18 +180,19 @@ def generate_binary_partition(filenames, labels, percentage):
             " y el valor entregado fue {value}".format(value=percentage)
         raise ValueError(error_msg)
 
-    n_files = int(len(filenames) * (percentage / 100))
-    permutation = np.random.permutation(len(filenames))
+    n_files = int(len(train_filenames) * (percentage / 100))
+    permutation = np.random.permutation(len(train_filenames))
 
-    filenames, labels = filenames[permutation], labels[permutation]
+    train_filenames = train_filenames[permutation]
+    train_labels = train_labels[permutation]
 
-    first_filenames = filenames[n_files:]
-    first_labels = labels[n_files:]
+    validation_filenames = train_filenames[:n_files]
+    validation_labels = train_labels[:n_files]
 
-    second_filenames = filenames[:n_files]
-    second_labels = labels[:n_files]
+    train_filenames = train_filenames[n_files:]
+    train_labels = train_labels[n_files:]
 
-    return (first_filenames, first_labels), (second_filenames, second_labels)
+    return (train_filenames, train_labels), (validation_filenames, validation_labels)
 
 
 def write_labels_map(labels_map, filename):
@@ -198,19 +214,19 @@ def write_labels_map(labels_map, filename):
         file.writelines(lines)
 
 
-def dump_dataset(dataset_path, train_filenames, train_labels,
-                 validation_filenames, validation_labels,
-                 test_filenames, test_labels):
+def dump_dataset(dataset_path, train_features, train_labels,
+                 validation_features, validation_labels,
+                 test_features, test_labels):
     """Escribe a disco un archivo json con los nombres de los archivos
     correspondientes a cada partición y sus etiquetas correspondientes.
 
     El formato del archivo producido es:
     {
-        "train_filenames": train_filenames
+        "train_features": train_features
         "train_labels": train_labels,
-        "validation_filenames": validation_filenames
+        "validation_features": validation_features
         "validation_labels": validation_labels,
-        "test_filenames": test_filenames
+        "test_features": test_features
         "test_labels": test_labelss
     },
     donde cada valor corresponde a una lista.
@@ -218,18 +234,18 @@ def dump_dataset(dataset_path, train_filenames, train_labels,
     Args:
         - dataset_path: str. Ubicación donde se guardará el dataset como
         diccionario json
-        - train_filenames: list[str]. Archivos del conjunto de entrenamiento.
+        - train_features: list[str]. Archivos del conjunto de entrenamiento.
         - train_labels: list[int]. Etiquetas del conjunto de entrenamiento
-        - validation_filenames: list[str]. Archivos del conjunto de validación.
+        - validation_features: list[str]. Archivos del conjunto de validación.
         - validation_labels: list[int]. Etiquetas del conjunto de validación
-        - test_filenames: list[str]. Archivos del conjunto de prueba.
+        - test_features: list[str]. Archivos del conjunto de prueba.
         - test_labels: list[int]. Etiquetas del conjunto de prueba
     """
-    dataset_dict = {"train_filenames": train_filenames,
+    dataset_dict = {"train_features": train_features,
                     "train_labels": train_labels,
-                    "validation_filenames": validation_filenames,
+                    "validation_features": validation_features,
                     "validation_labels": validation_labels,
-                    "test_filenames": test_filenames,
+                    "test_features": test_features,
                     "test_labels": test_labels}
     with open(dataset_path, "w") as file:
         json.dump(dataset_dict, file)
@@ -248,32 +264,32 @@ def check_integrity_dumped_dataset(dataset_path, labels_map):
     with open(dataset_path) as file:
         dataset_json = json.load(file)
 
-    train_filenames = dataset_json["train_filenames"]
+    train_features = dataset_json["train_features"]
     train_labels = dataset_json["train_labels"]
-    validation_filenames = dataset_json["validation_filenames"]
+    validation_features = dataset_json["validation_features"]
     validation_labels = dataset_json["validation_labels"]
-    test_filenames = dataset_json["test_filenames"]
+    test_features = dataset_json["test_features"]
     test_labels = dataset_json["test_labels"]
 
-    # Chequeamos que cada arreglo de filenames tenga la misma cantidad
+    # Chequeamos que cada arreglo de features tenga la misma cantidad
     # de elementos que el arreglo de etiquetas correspondientes
-    assert len(train_filenames) == len(train_labels)
-    assert len(validation_filenames) == len(validation_labels)
-    assert len(test_filenames) == len(test_labels)
+    assert len(train_features) == len(train_labels)
+    assert len(validation_features) == len(validation_labels)
+    assert len(test_features) == len(test_labels)
 
     # Chequeamos que la partición generada sea en verdad una partición;
     # es decir, que ningún elemento esté repetido en más de una partición
     # y que además la unión de cada partición corresponde al total
-    full_filenames = train_filenames + validation_filenames + test_filenames
-    assert len(set(full_filenames)) == len(train_filenames) + \
-        len(validation_filenames) + len(test_filenames)
+    full_features = train_features + validation_features + test_features
+    assert len(set(full_features)) == len(train_features) + \
+        len(validation_features) + len(test_features)
 
-    # Chequeamos correspondencia entre filenames y labels
-    partitions = [(train_filenames, train_labels),
-                  (validation_filenames, validation_labels),
-                  (test_filenames, test_labels)]
+    # Chequeamos correspondencia entre features y labels
+    partitions = [(train_features, train_labels),
+                  (validation_features, validation_labels),
+                  (test_features, test_labels)]
 
-    for partition_filenames, partition_labels in partitions:
-        for filename, label in zip(partition_filenames, partition_labels):
+    for partition_features, partition_labels in partitions:
+        for filename, label in zip(partition_features, partition_labels):
             label_from_filename, _ = os.path.split(filename)
             assert labels_map[label_from_filename] == label
