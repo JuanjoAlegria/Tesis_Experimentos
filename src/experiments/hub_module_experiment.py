@@ -22,9 +22,10 @@ import glob
 import json
 import shutil
 import argparse
+import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
-from ..dataset import tf_data_utils
+from ..dataset import data_utils, tf_data_utils
 from ..models.hub_module_model import hub_bottleneck_model_fn
 
 
@@ -78,8 +79,7 @@ class HubModelExperiment:
         self.tensors_to_log_train = flags.tensors_to_log_train
         self.tensors_to_log_val = flags.tensors_to_log_val
         self.save_checkpoints_steps = flags.save_checkpoints_steps
-        self.evaluate_every_n_seconds = flags.evaluate_every_n_seconds
-        self.delay_evaluation = flags.delay_evaluation
+        self.eval_frequency = flags.eval_frequency
 
         # Otras variables importantes
         self.cache_bottlenecks = not tf_data_utils.should_distort_images(
@@ -225,12 +225,17 @@ class HubModelExperiment:
             operaciones shuffle, repeat y batch.
         """
         return tf_data_utils.create_images_dataset(
-            train_filenames, train_labels, image_shape=self.module_image_shape,
-            image_depth=self.module_image_depth, src_dir=self.images_dir,
-            shuffle=True, num_epochs=self.num_epochs,
+            train_filenames,
+            train_labels,
+            image_shape=self.module_image_shape,
+            image_depth=self.module_image_depth,
+            src_dir=self.images_dir,
+            shuffle=True,
+            num_epochs=self.num_epochs,
             batch_size=self.train_batch_size,
             flip_left_right=self.flip_left_right,
-            random_crop=self.random_crop, random_scale=self.random_scale,
+            random_crop=self.random_crop,
+            random_scale=self.random_scale,
             random_brightness=self.random_brightness)
 
     def __test_input_fn(self, test_filenames, test_labels):
@@ -257,9 +262,8 @@ class HubModelExperiment:
             self.test_batch_size.
 
         Returns:
-            tf.data.Dataset, con mapeo de filenames a imágenes y distorsiones
-            aleatorias en caso de ser requeridas. Además, se le aplican las
-            operaciones shuffle, repeat y batch.
+            tf.data.Dataset, con mapeo de filenames a imágenes. Además, se
+            aplican las operaciones shuffle, repeat y batch.
         """
 
         return tf_data_utils.create_images_dataset(
@@ -376,23 +380,24 @@ class HubModelExperiment:
             ejecutados durante la evaluación.
         """
 
+        iterations = self.num_epochs // self.eval_frequency
+        print("# iterations:", iterations)
+
+        train_log = build_logging_tensor_hook(self.tensors_to_log_train)
+        val_log = build_logging_tensor_hook(self.tensors_to_log_val)
+
         train_input_fn = lambda: self.__train_input_fn(
             train_filenames, train_labels)
         eval_input_fn = lambda: self.__test_input_fn(
             validation_filenames, validation_labels)
 
-        train_log = build_logging_tensor_hook(self.tensors_to_log_train)
-        val_log = build_logging_tensor_hook(self.tensors_to_log_val)
-
-        train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn,
-                                            max_steps=self.num_epochs,
-                                            hooks=[train_log])
-        eval_spec = tf.estimator.EvalSpec(
-            input_fn=eval_input_fn, hooks=[val_log],
-            start_delay_secs=self.delay_evaluation,
-            throttle_secs=self.evaluate_every_n_seconds)
-
-        tf.estimator.train_and_evaluate(self.estimator, train_spec, eval_spec)
+        for __ in range(iterations):
+            train_filenames, train_labels = data_utils.shuffle_dataset(
+                train_filenames, train_labels)
+            self.estimator.train(input_fn=train_input_fn,
+                                 steps=self.eval_frequency,
+                                 hooks=[train_log])
+            self.estimator.evaluate(eval_input_fn, hooks=[val_log])
 
     def export_graph(self):
         """Exporta el grafo como un SavedModel estándar para ser utilizado
@@ -453,6 +458,9 @@ def build_logging_tensor_hook(tensors_names):
     tensors_dict = {display_name: real_name
                     for display_name, real_name in zip(tensors_names,
                                                        tensors_real_names)}
+    # Patch para tensor "loss"
+    if "loss" in tensors_dict:
+        tensors_dict["loss"] = "my_loss/value:0"
     return tf.train.LoggingTensorHook(tensors=tensors_dict, every_n_iter=1)
 
 
@@ -651,16 +659,10 @@ def get_parser():
         help='Cada cuántos pasos se deben guardar los checkpoints.'
     )
     parser.add_argument(
-        '--evaluate_every_n_seconds',
-        type=int,
-        default=600,
-        help='Cada cuántos segundos se debe evaluar el entrenamiento.'
-    )
-    parser.add_argument(
-        '--delay_evaluation',
+        '--eval_frequency',
         type=int,
         default=1200,
-        help='Cuántos segundos se debe retrasar el inicio de la evaluación.'
+        help='Cada cuántos pasos se debe evaluar el experimento.'
     )
     return parser
 
@@ -670,36 +672,26 @@ def main(_):
     y se crea un HubModelExperiment, con el cual se entrena y evalúa el modelo,
     para finalmente ser exportado.
     """
+    np.random.seed(FLAGS.random_seed)
     with open(FLAGS.dataset_json) as file:
         dataset_json = json.load(file)
 
     print("Obteniendo dataset desde archivo json")
-    train_filenames = dataset_json["train_filenames"]
-    train_labels = dataset_json["train_labels"]
-    validation_filenames = dataset_json["validation_filenames"]
-    validation_labels = dataset_json["validation_labels"]
-    test_filenames = dataset_json["test_filenames"]
-    test_labels = dataset_json["test_labels"]
+    train_filenames = np.array(dataset_json["train_features"])
+    train_labels = np.array(dataset_json["train_labels"])
+    validation_filenames = np.array(dataset_json["validation_features"])
+    validation_labels = np.array(dataset_json["validation_labels"])
+    test_filenames = np.array(dataset_json["test_features"])
+    test_labels = np.array(dataset_json["test_labels"])
     n_classes = len(set(train_labels))
 
     print("Creando HubModelExperiment")
     hub_experiment = HubModelExperiment(FLAGS, n_classes)
 
-    # # Configuramos el hook para loggear tensores
-    # tensors_to_log = {  # "filenames": "IteratorGetNext:0",
-    #     "loss": "loss:0",
-    #     "global_step": "global_step:0"}
-    # #"has_prev_bottlenecks": "has_prev_bottlenecks:0"}
-    # #"write_bottlenecks": "write_bottlenecks:0"
-
-    # logging_hook = tf.train.LoggingTensorHook(
-    #     tensors=tensors_to_log, every_n_iter=1)
-
     print("Entrenando")
-    hub_experiment.train(train_filenames, train_labels)
-    print("Evaluando con el conjunto de validación")
-    hub_experiment.test_and_predict(
-        validation_filenames, validation_labels, "validation")
+    hub_experiment.train_and_evaluate(train_filenames, train_labels,
+                                      validation_filenames, validation_labels)
+    # hub_experiment.train(train_filenames, train_labels)
     print("Evaluando con el conjunto de prueba")
     hub_experiment.test_and_predict(test_filenames, test_labels, "test")
     print("Exportando")
