@@ -572,7 +572,7 @@ def get_parser():
         default=0,
         help="""\
         Porcentaje que indica el margen total a utilizar alrededor de la
-        caja de recorte (crop box).Sólo tiene efecto en las imágenes de
+        caja de recorte (crop box). Sólo tiene efecto en las imágenes de
         entrenamiento.\
         """
     )
