@@ -14,7 +14,7 @@ ifeq ($(ENV), cpu)
 		--dataset_path $@ --random_seed $(RANDOM_SEED) \
 		--max_files_train 200 --max_files_test 200
 else
-	$(PYTHON_BIN) -m src.scripts.generate_dataset --images_dir $< \
+	$(PYTHON_BIN) -m src.scripts.mnist.generate_dataset --images_dir $< \
 		--dataset_path $@ --random_seed $(RANDOM_SEED) 
 endif
 
