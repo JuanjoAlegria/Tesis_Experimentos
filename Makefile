@@ -119,9 +119,9 @@ patches_experiment: data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 		--images_dir data/processed/$(DATASET_PATCHES) \
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
-		--num_epochs 4000 \
+		--num_epochs 1000 \
 		--model_name $(MODEL_NAME) \
-		--remove_prev_ckpts_and_logs \
+		# --remove_prev_ckpts_and_logs \
 		--tensors_to_log_train loss global_step \
 		--save_checkpoints_steps 100 \
 		--eval_frequency 100
