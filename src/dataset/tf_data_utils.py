@@ -94,6 +94,7 @@ def create_images_dataset(filenames, labels, image_shape, image_depth, src_dir,
 
     def _random_distortions(feature, label):
         image = feature["image"]
+        decoded_image_4d = tf.expand_dims(image, 0)
         margin_scale = 1.0 + (random_crop / 100.0)
         resize_scale = 1.0 + (random_scale / 100.0)
         margin_scale_value = tf.constant(margin_scale)
@@ -107,10 +108,11 @@ def create_images_dataset(filenames, labels, image_shape, image_depth, src_dir,
         precrop_shape = tf.stack([precrop_height, precrop_width])
         precrop_shape_as_int = tf.cast(precrop_shape, dtype=tf.int32)
 
-        precropped_image = tf.image.resize_bilinear(image,
+        precropped_image = tf.image.resize_bilinear(decoded_image_4d,
                                                     precrop_shape_as_int)
+        precropped_image_3d = tf.squeeze(precropped_image, squeeze_dims=[0])
         cropped_image = tf.random_crop(
-            precropped_image, [image_shape[0], image_shape[1], image_depth])
+            precropped_image_3d, [image_shape[0], image_shape[1], image_depth])
         if flip_left_right:
             flipped_image = tf.image.random_flip_left_right(cropped_image)
         else:
