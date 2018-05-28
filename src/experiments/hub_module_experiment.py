@@ -193,7 +193,8 @@ class HubModelExperiment:
                   "n_classes": self.n_classes,
                   "cache_bottlenecks": cache_bottlenecks,
                   "bottlenecks_dir": self.bottlenecks_dir,
-                  "learning_rate": self.learning_rate}
+                  "learning_rate": self.learning_rate,
+                  "fine_tuning": self.fine_tuning}
 
         classifier = tf.estimator.Estimator(
             model_fn=hub_bottleneck_model_fn,

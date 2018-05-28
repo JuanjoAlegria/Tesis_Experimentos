@@ -142,10 +142,14 @@ def hub_bottleneck_model_fn(features, labels, mode, params):
 
     # Cargamos el módulo
     module_spec = params["module_spec"]
+    fine_tuning = params["fine_tuning"]
+    tags = {"train"} if fine_tuning else None
     # Al cargar el módulo se imprimen demasiadas cosas en pantalla,
     # así que subimos momentáneamente el logging a WARN
     tf.logging.set_verbosity(tf.logging.WARN)
-    bottlenecks_extractor = hub.Module(module_spec)
+    bottlenecks_extractor = hub.Module(module_spec,
+                                       trainable=fine_tuning,
+                                       tags=tags)
     # Volvemos a activar el logging INFO
     tf.logging.set_verbosity(tf.logging.INFO)
     output_shape = module_spec.get_output_info_dict(
@@ -224,9 +228,6 @@ def hub_bottleneck_model_fn(features, labels, mode, params):
     predictions = {
         # Generamos predicciones (para modos PREDICT y EVAL)
         "classes": classes,
-        # Añadimos al grafo un tensor softmax (con nombre "softmax_tensor")
-        # Será utilizado en el modo PREDICT y además puede ser requerido para
-        # ser loggeado
         "probabilities": probabilities
     }
     export_outputs = \
