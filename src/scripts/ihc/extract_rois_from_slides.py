@@ -18,6 +18,9 @@ def move_and_convert_rois(src_dir, dst_dir):
         - src_dir: str. Directorio donde residen los ROIs.
         - dst_dir: str. Directorio a donde se quiere mover los ROIs.
     """
+    import pdb
+    pdb.set_trace()  # breakpoint 6bb9da9d //
+
     os.makedirs(dst_dir, exist_ok=True)
     all_rois = glob.glob(os.path.join(src_dir, "*.tif"))
     print("Transformando a jpeg")

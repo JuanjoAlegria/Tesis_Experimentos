@@ -102,6 +102,29 @@ class Point2D:
         """
         return [self.x_coord, self.y_coord]
 
+    def scale(self, x_scale, y_scale, force_int=False):
+        """Reescala un punto de forma lineal
+
+        Args:
+            - x_scale: float. Proporción por la cual se debe reescalar en el
+            eje x.
+            - y_scale: float. Proporción por la cual se debe reescalar en el
+            eje y.
+            - force_int: bool. True si es que las coordenadas resultantes
+            deben ser números enteros, False en caso de que se permitan floats.
+
+        Returns:
+            Point2D reescalado.
+        """
+        new_x = self.x_coord * x_scale
+        new_y = self.y_coord * y_scale
+
+        if force_int:
+            new_x = int(round(new_x))
+            new_y = int(round(new_y))
+
+        return Point2D(new_x, new_y)
+
     def __str__(self):
         """Representación como string de un Point2D
 
@@ -162,6 +185,31 @@ class CircularRegion:
         new_radius = self.radius / (1000 * mpp_average)
         if force_int:
             new_radius = int(new_radius)
+        return CircularRegion(new_center, new_radius)
+
+    def scale(self, x_scale, y_scale, force_int=False):
+        """Rescala una CircularRegion.
+
+        Para preservar la circularidad de la región, es necesario que el
+        reescalamiento sea igual en los ejes x e y. Por ello, x_scale debe ser
+        igual a y_scale.
+
+        Args:
+            - x_scale: float. Proporción por la cual se debe reescalar en el
+            eje x.
+            - y_scale: float. Proporción por la cual se debe reescalar en el
+            eje y. Debe ser igual a x_scale.
+            - force_int: bool. True si es que las coordenadas resultantes
+            deben ser números enteros, False en caso de que se permitan floats.
+
+        Returns:
+            CircularRegion reescalada.
+        """
+        assert x_scale == y_scale, "x_scale debe ser igual a y_scale"
+        new_center = self.center.scale(x_scale, y_scale, force_int)
+        new_radius = self.radius * x_scale
+        if force_int:
+            new_radius = int(round(new_radius))
         return CircularRegion(new_center, new_radius)
 
     def get_bounding_box(self):
@@ -235,13 +283,31 @@ class RectangularRegion:
 
         return RectangularRegion(new_points)
 
+    def scale(self, x_scale, y_scale, force_int=False):
+        """Rescala una región rectangular.
+
+        Args:
+            - x_scale: float. Proporción por la cual se debe reescalar en el
+            eje x.
+            - y_scale: float. Proporción por la cual se debe reescalar en el
+            eje y.
+            - force_int: bool. True si es que las coordenadas resultantes
+            deben ser números enteros, False en caso de que se permitan floats.
+
+        Returns:
+            RectangularRegion reescalada.
+        """
+        new_points = [p.scale(x_scale, y_scale, force_int)
+                      for p in self.points]
+        return RectangularRegion(new_points)
+
     def get_bounding_box(self):
         """Crea una cuadro delimitador (bounding box) que contiene para
         RectangularRegion. En este caso, el bounding box corresponde a los
         mismos vértices que definen la RectangularRegion.
 
         Returns:
-            np.array(shape=(4,2), dtype='int64') que representa el bounding
+            np.array(shape=(4, 2), dtype='int64') que representa el bounding
             box de RectangularRegion.
         """
         corners = [p.as_list() for p in self.points]
@@ -265,13 +331,14 @@ class Annotation:
         la anotación.
         - annotation_id: str. Id de la anotación, tal como está definida en
         el archivo xml correspondiente.
-        - annotation_type: str. Tipo de anotación (circle, freehand, pin).
+        - annotation_type: str. Tipo de anotación(circle, freehand, pin).
         - owner: str. Autor de la anotación, tal como está definida en
         el archivo xml correspondiente.
         - title: str. Título de la anotación.
         - details: str. Detalles añadidos a la anotación.
         - region: CircularRegion o RectangularRegion: ROI asociado a la
-        anotación, en coordenadas físicas.
+        anotación, en coordenadas físicas. Se asume que las coordenadas están
+        respecto a la magnificación x40.
 
     Return:
         Annotation.
@@ -298,13 +365,17 @@ class Annotation:
         Args:
             - slide_path: str. Ubicación de la slide ndpi.
             - slide_magnification: str. Magnificación a la cual se quiere
-            extraer la imagen (x5, x10, x20, x40).
+            extraer la imagen(x5, x10, x20, x40).
         """
+        scale_map = {"x40": 1, "x20": 0.5, "x10": 0.25, "x5": 0.125}
 
         x_offset, y_offset, mpp_x, mpp_y, \
             width_l0, height_l0 = get_properties_ndpi(slide_path)
-        pixels_region = self.physical_region.to_pixels(
+        pixels_region_x40 = self.physical_region.to_pixels(
             x_offset, y_offset, mpp_x, mpp_y, width_l0, height_l0)
+        scale = scale_map[slide_magnification]
+        pixels_region = pixels_region_x40.scale(x_scale=scale, y_scale=scale,
+                                                force_int=True)
 
         bounding_box = pixels_region.get_bounding_box()
         (x_coord, y_coord, width, height) = get_top_left_and_size(bounding_box)
@@ -361,13 +432,13 @@ def get_top_left_and_size(box):
     esquina superior izquierda, y el ancho y alto de la imagen.
 
     Args:
-        - box: np.array(shape=(4,2), dtype='int64') que representa un bounding
+        - box: np.array(shape=(4, 2), dtype='int64') que representa un bounding
         box.
 
     Returns:
-        list[num, num, num, num], lista con la coordenadas x,y de la esquina
-        superior izquierda del bounding box (primeros dos elementos), y su
-        ancho y alto (tercer y cuarto elemento).
+        list[num, num, num, num], lista con la coordenadas x, y de la esquina
+        superior izquierda del bounding box(primeros dos elementos), y su
+        ancho y alto(tercer y cuarto elemento).
     """
     x_min = box[:, 0].min()
     x_max = box[:, 0].max()
@@ -386,16 +457,16 @@ def get_properties_ndpi(ndpi_path):
         - ndpi_path: str. Ubicación de la imagen ndpi.
 
     Returns:
-        - x_offset: float. Distancia (en nm) desde el centro de la imagen
+        - x_offset: float. Distancia(en nm) desde el centro de la imagen
         completa al centro de la imagen principal en el eje x.
-        - y_offset: float. Distancia (en nm) desde el centro de la imagen
+        - y_offset: float. Distancia(en nm) desde el centro de la imagen
         completa al centro de la imagen principal en el eje y.
         - mpp_x: float. Micrómetros por pixel, eje x.
         - mpp_y: float. Micrómetros por pixel, eje y.
-        - width_l0: int. Ancho de la imagen (en pixeles) en su resolución
-        más alta (generalamente, 40x)
-        - height_l0: int. Altura de la imagen (en pixeles) en su resolución
-        más alta (generalamente, 40x)
+        - width_l0: int. Ancho de la imagen(en pixeles) en su resolución
+        más alta(generalamente, 40x)
+        - height_l0: int. Altura de la imagen(en pixeles) en su resolución
+        más alta(generalamente, 40x)
     """
     slide = openslide.OpenSlide(ndpi_path)
     x_offset = float(slide.properties['hamamatsu.XOffsetFromSlideCentre'])
