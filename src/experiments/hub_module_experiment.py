@@ -703,6 +703,9 @@ def main(_):
     hub_experiment.train_and_evaluate(train_filenames, train_labels,
                                       validation_filenames, validation_labels)
     # hub_experiment.train(train_filenames, train_labels)
+    print("Evaluando con el conjunto de validación")
+    hub_experiment.test_and_predict(
+        validation_filenames, validation_labels, "test")
     print("Evaluando con el conjunto de prueba")
     hub_experiment.test_and_predict(test_filenames, test_labels, "test")
     print("Exportando")
