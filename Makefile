@@ -60,6 +60,8 @@ clear_test_with_bottlenecks: clear_test
 ####################### PATCHES EXPERIMENT ####################################
 MAGNIFICATION = x40
 NUM_EPOCHS = 5000
+FINE_TUNING = True
+
 DASASET_SLIDES = ihc_slides
 DATASET_ROIS = ihc_rois_$(MAGNIFICATION)
 DATASET_PATCHES = ihc_patches_$(MAGNIFICATION)
@@ -128,7 +130,7 @@ patches_experiment: data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 		--save_checkpoints_steps 100 \
 		--eval_frequency 100
 
-patches_experiment_random: \
+patches_random_experiment: \
 data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
 		--experiment_name $(DATASET_PATCHES)_random_experiment \
@@ -144,3 +146,35 @@ data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 		--random_crop 20 \
 		--random_scale 20 \
 		--random_brightness 5
+
+patches_fine_tuning_experiment: \
+data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
+	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
+		--experiment_name $(DATASET_PATCHES)_experiment \
+		--images_dir data/processed/$(DATASET_PATCHES) \
+		--random_seed $(RANDOM_SEED) \
+		--dataset_json $< \
+		--num_epochs $(NUM_EPOCHS) \
+		--model_name $(MODEL_NAME) \
+		--tensors_to_log_train loss global_step \
+		--save_checkpoints_steps 100 \
+		--eval_frequency 100 \
+		--fine_tuning
+
+patches_random_fine_tuning_experiment: \
+data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
+	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
+		--experiment_name $(DATASET_PATCHES)_random_experiment \
+		--images_dir data/processed/$(DATASET_PATCHES) \
+		--random_seed $(RANDOM_SEED) \
+		--dataset_json $< \
+		--num_epochs $(NUM_EPOCHS) \
+		--model_name $(MODEL_NAME) \
+		--tensors_to_log_train loss global_step \
+		--save_checkpoints_steps 100 \
+		--eval_frequency 100 \
+		--flip_left_right \
+		--random_crop 20 \
+		--random_scale 20 \
+		--random_brightness 5 \
+		--fine_tuning
