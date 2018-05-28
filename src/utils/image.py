@@ -3,6 +3,31 @@
 
 import os
 import cv2
+import numpy as np
+
+
+def is_useful_patch(image, threshold_proportion=0.7):
+    """Retorna True si es que la cantidad de pixeles grises en la imagen 
+    es menor a cierta proporción de pixeles en la imagen.
+
+    Args:
+        - image: np.array, imagen.
+        - threshold_proportion: float. Proporción máxima de pixeles grises
+        soportada.
+
+    Returns:
+        bool. True, si es que la cantidad de pixeles grises en image es menor
+        a threshold_proportion multiplicado por la cantidad total de pixeles,
+        False en caso contrario.
+    """
+    lower = np.array([225, 225, 225])
+    upper = np.array([255, 255, 255])
+    gray_pixels = cv2.inRange(image, lower, upper)
+    n_gray_pixels = np.count_nonzero(gray_pixels)
+
+    n_pixels = image.shape[0] * image.shape[1]
+    threshold_proportion = 0.7
+    return n_gray_pixels < threshold_proportion * n_pixels
 
 
 def extract_patches(image_path, patch_height, patch_width,
