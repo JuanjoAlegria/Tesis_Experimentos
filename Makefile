@@ -150,7 +150,7 @@ data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 patches_fine_tuning_experiment: \
 data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
-		--experiment_name $(DATASET_PATCHES)_experiment \
+		--experiment_name $(DATASET_PATCHES)_fine_tuning_experiment \
 		--images_dir data/processed/$(DATASET_PATCHES) \
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
@@ -164,7 +164,7 @@ data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 patches_random_fine_tuning_experiment: \
 data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
-		--experiment_name $(DATASET_PATCHES)_random_experiment \
+		--experiment_name $(DATASET_PATCHES)_random_fine_tuning_experiment \
 		--images_dir data/processed/$(DATASET_PATCHES) \
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
