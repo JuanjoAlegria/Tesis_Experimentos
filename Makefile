@@ -96,10 +96,8 @@ data/processed/$(DATASET_PATCHES): data/interim/$(DATASET_ROIS)
 		--patches_height 300 \
 		--patches_width 300 \
 		--stride_rows 250 \
-		--stride_columns 250
-	$(PYTHON_BIN) -m src.scripts.ihc.remove_useless_patches \
-		--patches_dir $@ \
-		--kib_min_size 10.7
+		--stride_columns 250 \
+		--threshold_gray_pixels 0.9
 
 
 data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json: \
