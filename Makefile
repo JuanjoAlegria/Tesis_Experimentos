@@ -60,7 +60,7 @@ MAGNIFICATION = x40
 DASASET_SLIDES = ihc_slides
 DATASET_ROIS = ihc_rois_$(MAGNIFICATION)
 DATASET_PATCHES = ihc_patches_$(MAGNIFICATION)
-PATCHES_EXPEIMENT_NAME = ihc_patches_experiment_2
+PATCHES_EXPERIMENT_NAME = $(DATASET_PATCHES)_experiment
 data/extras/$(DASASET_SLIDES)/annotations:
 # Pedirá que ingrese Usuario y contraseña para ndp.microscopiavirtual.com
 	$(PYTHON_BIN) -m src.scripts.ihc.get_annotations \
@@ -115,7 +115,7 @@ clear_patches_experiment:
 
 patches_experiment: data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
-		--experiment_name $(PATCHES_EXPEIMENT_NAME) \
+		--experiment_name $(DATASET_PATCHES)_experiment \
 		--images_dir data/processed/$(DATASET_PATCHES) \
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
@@ -124,13 +124,11 @@ patches_experiment: data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 		--tensors_to_log_train loss global_step \
 		--save_checkpoints_steps 100 \
 		--eval_frequency 100
-		# --remove_prev_ckpts_and_logs \
-
 
 patches_experiment_random: \
 data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
-		--experiment_name $(PATCHES_EXPEIMENT_NAME)_random \
+		--experiment_name $(DATASET_PATCHES)_random_experiment \
 		--images_dir data/processed/$(DATASET_PATCHES) \
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
@@ -143,4 +141,3 @@ data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 		--random_crop 20 \
 		--random_scale 20 \
 		--random_brightness 5
-		# --remove_prev_ckpts_and_logs \
