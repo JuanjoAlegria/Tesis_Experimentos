@@ -73,7 +73,7 @@ def get_filenames_and_labels(data_dir, partition=FULL_DATASET,
         - filenames: list[str]. Lista con los nombres de los archivos en
         formato label/filename.jpg. Notar que, en este caso, label corresponde
         a la etiqueta sin transformar (e.g, acá label si puede ser setosa o
-        versicolor). 
+        versicolor).
         - labels: list[int]. Lista con las etiquetas correspondientes
         convertidas a enteros. Correlativo con filenames.
         - labels_map: dict[str: int]. Diccionario con el mapeo entre etiquetas
@@ -192,7 +192,8 @@ def generate_validation_set(train_filenames, train_labels, percentage):
     train_filenames = train_filenames[n_files:]
     train_labels = train_labels[n_files:]
 
-    return (train_filenames, train_labels), (validation_filenames, validation_labels)
+    return (train_filenames, train_labels), \
+        (validation_filenames, validation_labels)
 
 
 def write_labels_map(labels_map, filename):

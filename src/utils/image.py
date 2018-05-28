@@ -2,12 +2,12 @@
 """
 
 import os
-import cv2
 import numpy as np
+import cv2
 
 
 def is_useful_patch(image, threshold_proportion=0.7):
-    """Retorna True si es que la cantidad de pixeles grises en la imagen 
+    """Retorna True si es que la cantidad de pixeles grises en la imagen
     es menor a cierta proporción de pixeles en la imagen.
 
     Args:
