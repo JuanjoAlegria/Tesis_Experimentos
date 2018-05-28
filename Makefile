@@ -28,9 +28,10 @@ ifeq ($(ENV), cpu)
 		--num_epochs 20 \
 		--model_name $(MODEL_NAME) \
 		--remove_prev_ckpts_and_logs \
-		--tensors_to_log_train global_step loss filenames \
+		--tensors_to_log_train global_step loss \
 		--save_checkpoints_steps 5 \
-		--eval_frequency 5
+		--eval_frequency 5 \
+		--fine_tuning
 else
 	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
 		--experiment_name $(TEST_EXPERIMENT_NAME) \
