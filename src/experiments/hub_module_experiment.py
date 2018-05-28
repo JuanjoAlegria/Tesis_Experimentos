@@ -80,11 +80,13 @@ class HubModelExperiment:
         self.tensors_to_log_val = flags.tensors_to_log_val
         self.save_checkpoints_steps = flags.save_checkpoints_steps
         self.eval_frequency = flags.eval_frequency
+        self.fine_tuning = flags.fine_tuning
 
         # Otras variables importantes
-        self.cache_bottlenecks = not tf_data_utils.should_distort_images(
-            self.flip_left_right, self.random_crop,
-            self.random_scale, self.random_brightness)
+        self.cache_bottlenecks = not self.fine_tuning and \
+            not tf_data_utils.should_distort_images(
+                self.flip_left_right, self.random_crop,
+                self.random_scale, self.random_brightness)
         # Obtenemos el module_spec correspondiente
         module_url = get_module_url(self.model_name)
         self.module_spec = hub.load_module_spec(module_url)
@@ -148,13 +150,15 @@ class HubModelExperiment:
             shutil.rmtree(self.logs_and_checkpoints_dir)
 
         os.makedirs(self.logs_and_checkpoints_dir, exist_ok=True)
-        os.makedirs(self.bottlenecks_dir, exist_ok=True)
         os.makedirs(self.export_model_dir, exist_ok=True)
         os.makedirs(self.results_dir, exist_ok=True)
 
-        for label_index in range(self.n_classes):
-            os.makedirs(os.path.join(self.bottlenecks_dir, str(label_index)),
-                        exist_ok=True)
+        if self.cache_bottlenecks:
+            os.makedirs(self.bottlenecks_dir, exist_ok=True)
+            for label_index in range(self.n_classes):
+                os.makedirs(
+                    os.path.join(self.bottlenecks_dir, str(label_index)),
+                    exist_ok=True)
 
     def __save_config_file(self, flags):
         """ Guarda un archivo json en self.results_dir con la configuración
@@ -663,6 +667,12 @@ def get_parser():
         type=int,
         default=1200,
         help='Cada cuántos pasos se debe evaluar el experimento.'
+    )
+    parser.add_argument(
+        '--fine_tuning',
+        default=False,
+        help='True para reentrenar y ajustar capas internas del modelo',
+        action='store_true'
     )
     return parser
 
