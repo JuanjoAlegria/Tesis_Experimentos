@@ -30,8 +30,7 @@ ifeq ($(ENV), cpu)
 		--remove_prev_ckpts_and_logs \
 		--tensors_to_log_train global_step loss \
 		--save_checkpoints_steps 5 \
-		--eval_frequency 5 \
-		--fine_tuning
+		--eval_frequency 5 
 else
 	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
 		--experiment_name $(TEST_EXPERIMENT_NAME) \
