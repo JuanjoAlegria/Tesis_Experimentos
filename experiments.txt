@@ -1,25 +1,37 @@
 Experimentos a probar:
 
 parches x40:
-    - inception_v3 retrain última capa
+    - inception_v3, retrain última capa
+    - inception_v3, retrain + fine tuning
+    - inception_v3, random distorsions
+    - inception_v3, random distorsions + fine tuning
+
+parches x20:
+    - inception_v3, retrain última capa
     - inception_v3, retrain + fine tuning
     - inception_v3, random distorsions
     - inception_v3, random distorsions + fine tuning
 
 parches x10:
-    - inception_v3 retrain última capa
+    - inception_v3, retrain última capa
     - inception_v3, retrain + fine tuning
     - inception_v3, random distorsions
     - inception_v3, random distorsions + fine tuning
 
 células x40:
-    - inception_v3 retrain última capa
+    - inception_v3, retrain última capa
+    - inception_v3, retrain + fine tuning
+    - inception_v3, random distorsions
+    - inception_v3, random distorsions + fine tuning
+
+células x20:
+    - inception_v3, retrain última capa
     - inception_v3, retrain + fine tuning
     - inception_v3, random distorsions
     - inception_v3, random distorsions + fine tuning
 
 células x10:
-    - inception_v3 retrain última capa
+    - inception_v3, retrain última capa
     - inception_v3, retrain + fine tuning
     - inception_v3, random distorsions
     - inception_v3, random distorsions + fine tuning
