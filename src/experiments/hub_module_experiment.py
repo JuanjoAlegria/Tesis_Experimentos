@@ -305,6 +305,33 @@ class HubModelExperiment:
         return tf.estimator.export.ServingInputReceiver(features,
                                                         received_tensors)
 
+    def _save_best_checkpoint(self, global_step):
+        """Guarda el mejor checkpoint con un nombre distinto, para evitar que
+        sea borrado. Además, borra el mejor checkpoint anterior (para evitar
+        utilizar demasiado espacio en disco)
+
+        Args:
+            - global_step: int. Paso global al cual corresponde el checkpoint
+            que se desea guardar.
+        """
+
+        # Eliminamos best_model previo
+        prev_best_ckpt = glob.glob(os.path.join(self.logs_and_checkpoints_dir,
+                                                "best_model.ckpt*"))
+        for file in prev_best_ckpt:
+            os.remove(file)
+
+        # Guardamos el best_model actual
+        template_checkpoint = os.path.join(self.logs_and_checkpoints_dir,
+                                           "model.ckpt-{global_step}*")
+        checkpoint_files = glob.glob(template_checkpoint.format(
+            global_step=global_step))
+        for checkpoint_file in checkpoint_files:
+            _, file_name_ext = os.path.split(checkpoint_file)
+            new_file = os.path.join(self.logs_and_checkpoints_dir,
+                                    "best_" + file_name_ext)
+            shutil.copyfile(checkpoint_file, new_file)
+
     def train(self, train_filenames, train_labels):
         """Entrena el tf.Estimator
 
@@ -396,13 +423,24 @@ class HubModelExperiment:
         eval_input_fn = lambda: self.__test_input_fn(
             validation_filenames, validation_labels)
 
+        best_accuracy = 0
+        best_global_step = 0
+
         for __ in range(iterations):
             train_filenames, train_labels = data_utils.shuffle_dataset(
                 train_filenames, train_labels)
             self.estimator.train(input_fn=train_input_fn,
                                  steps=self.eval_frequency,
                                  hooks=[train_log])
-            self.estimator.evaluate(eval_input_fn, hooks=[val_log])
+            evaluation_dict = self.estimator.evaluate(
+                eval_input_fn, hooks=[val_log])
+            if evaluation_dict['my_accuracy'] > best_accuracy:
+                best_accuracy = evaluation_dict['my_accuracy']
+                best_global_step = evaluation_dict['global_step']
+                self._save_best_checkpoint(best_global_step)
+
+        print("Mejor exactitud:", best_accuracy,
+              ", obtenida en paso número", best_global_step)
 
     def export_graph(self):
         """Exporta el grafo como un SavedModel estándar para ser utilizado
@@ -491,13 +529,13 @@ def get_parser():
         label_original/filename.jpg, relativo a images_dir.
         - train_labels: list[int]. Etiquetas del conjunto de entrenamiento,
         donde cada elemento es un entero en el rango [0, n_classes - 1].
-        - validation_filenames: list[str]. Conjunto de validación, análogo a 
+        - validation_filenames: list[str]. Conjunto de validación, análogo a
         train_filenaames.
-        - validation_labels: list[int]. Etiquetas de validación, análogo a 
+        - validation_labels: list[int]. Etiquetas de validación, análogo a
         train_labels.
-        - test_filenames: list[str]. Conjunto de prueba, análogo a 
+        - test_filenames: list[str]. Conjunto de prueba, análogo a
         train_filenaames.
-        - test_labels: list[int]. Etiquetas de prueba, análogo a 
+        - test_labels: list[int]. Etiquetas de prueba, análogo a
         train_labels.\
         """
     )
@@ -632,7 +670,7 @@ def get_parser():
         type=str,
         nargs='*',
         help="""\
-        Tensores que se deben loggear al entrenar. Opciones válidas son: 
+        Tensores que se deben loggear al entrenar. Opciones válidas son:
             - loss
             - global_step
             - filenames
@@ -647,7 +685,7 @@ def get_parser():
         type=str,
         nargs='*',
         help="""\
-        Tensores que se deben loggear al evaluar. Opciones válidas son: 
+        Tensores que se deben loggear al evaluar. Opciones válidas son:
             - loss
             - global_step
             - filenames
@@ -705,7 +743,7 @@ def main(_):
     # hub_experiment.train(train_filenames, train_labels)
     print("Evaluando con el conjunto de validación")
     hub_experiment.test_and_predict(
-        validation_filenames, validation_labels, "test")
+        validation_filenames, validation_labels, "validation")
     print("Evaluando con el conjunto de prueba")
     hub_experiment.test_and_predict(test_filenames, test_labels, "test")
     print("Exportando")
