@@ -20,7 +20,7 @@ endif
 
 test_experiment: data/partitions_json/mnist/dataset_dict.json
 ifeq ($(ENV), cpu)
-	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
+	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
 		--experiment_name $(TEST_EXPERIMENT_NAME) \
 		--images_dir data/raw/mnist \
 		--random_seed $(RANDOM_SEED) \
@@ -32,7 +32,7 @@ ifeq ($(ENV), cpu)
 		--save_checkpoints_steps 5 \
 		--eval_frequency 5 
 else
-	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
+	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
 		--experiment_name $(TEST_EXPERIMENT_NAME) \
 		--images_dir data/raw/mnist \
 		--random_seed $(RANDOM_SEED) \
@@ -116,7 +116,7 @@ clear_patches_experiment:
 	rm -r data/partitions_json/$(DATASET_PATCHES) || true
 
 patches_experiment: data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
-	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
+	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
 		--experiment_name $(DATASET_PATCHES)_experiment \
 		--images_dir data/processed/$(DATASET_PATCHES) \
 		--random_seed $(RANDOM_SEED) \
@@ -129,7 +129,7 @@ patches_experiment: data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 
 patches_random_experiment: \
 data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
-	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
+	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
 		--experiment_name $(DATASET_PATCHES)_random_experiment \
 		--images_dir data/processed/$(DATASET_PATCHES) \
 		--random_seed $(RANDOM_SEED) \
@@ -146,7 +146,7 @@ data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 
 patches_fine_tuning_experiment: \
 data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
-	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
+	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
 		--experiment_name $(DATASET_PATCHES)_fine_tuning_experiment \
 		--images_dir data/processed/$(DATASET_PATCHES) \
 		--random_seed $(RANDOM_SEED) \
@@ -160,7 +160,7 @@ data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 
 patches_random_fine_tuning_experiment: \
 data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
-	$(PYTHON_BIN) -m src.experiments.hub_module_experiment \
+	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
 		--experiment_name $(DATASET_PATCHES)_random_fine_tuning_experiment \
 		--images_dir data/processed/$(DATASET_PATCHES) \
 		--random_seed $(RANDOM_SEED) \

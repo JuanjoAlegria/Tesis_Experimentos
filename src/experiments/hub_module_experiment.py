@@ -22,434 +22,10 @@ import glob
 import json
 import shutil
 import argparse
-import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
 from ..dataset import data_utils, tf_data_utils
 from ..models.hub_module_model import hub_bottleneck_model_fn
-
-
-class HubModelExperiment:
-    """Clase para llevar a cabo un experimento con un hub_module_estimator.
-
-    Esta clase está pensada para ser usada tras recibir parámetros desde la
-    línea de comandos, por lo cual recibe un objeto llamado flags con dicho
-    parámetros. Además, recibe el número de clases sobre las cuales se
-    realizará la clasificación (este parámetro se infiere desde el dataset y no
-    se entrega vía línea de comandos, por eso la diferenciación entre ambos
-    parámetros).
-
-    Args:
-        - flags: argparse.Namespace. Objeto con parámetros necesarios para el
-        modelo. Se genera tras llamar a parser.parse_know_args().
-        - n_classes: int. Número de clases a clasificar.
-
-    Returns:
-        HubModelExperiment con un tf.Estimator basado en hub_module_estimator.
-    """
-
-    def __init__(self, flags, n_classes):
-        self.n_classes = n_classes
-
-        # Pasamos las variables relacionadas a la estructura del experimento
-        self.experiment_name = flags.experiment_name
-        self.model_name = flags.model_name
-        self.logs_and_checkpoints_dir = flags.logs_and_checkpoints_dir
-        self.export_model_dir = flags.export_model_dir
-        self.bottlenecks_dir = flags.bottlenecks_dir
-        self.results_dir = flags.results_dir
-        self.remove_prev_ckpts_and_logs = flags.remove_prev_ckpts_and_logs
-        self.random_seed = flags.random_seed
-
-        # Pasamos las variables relacionadas al dataset
-        # images_dir: hacemos esto para asegurar que el directorio esté
-        # en formato absoluto, y además para que tenga un slash al final
-        # siempre
-        self.images_dir = os.path.join(os.path.abspath(flags.images_dir), "")
-        self.flip_left_right = flags.flip_left_right
-        self.random_crop = flags.random_crop
-        self.random_scale = flags.random_scale
-        self.random_brightness = flags.random_brightness
-
-        # Pasamos las variables relacionadas al entrenamiento
-        self.train_batch_size = flags.train_batch_size
-        self.test_batch_size = flags.test_batch_size
-        self.num_epochs = flags.num_epochs
-        self.learning_rate = flags.learning_rate
-        self.tensors_to_log_train = flags.tensors_to_log_train
-        self.tensors_to_log_val = flags.tensors_to_log_val
-        self.save_checkpoints_steps = flags.save_checkpoints_steps
-        self.eval_frequency = flags.eval_frequency
-        self.fine_tuning = flags.fine_tuning
-
-        # Otras variables importantes
-        self.cache_bottlenecks = not self.fine_tuning and \
-            not tf_data_utils.should_distort_images(
-                self.flip_left_right, self.random_crop,
-                self.random_scale, self.random_brightness)
-        # Obtenemos el module_spec correspondiente
-        module_url = get_module_url(self.model_name)
-        self.module_spec = hub.load_module_spec(module_url)
-        self.module_image_shape = hub.get_expected_image_size(self.module_spec)
-        self.module_image_depth = hub.get_num_image_channels(self.module_spec)
-
-        self.__init_log_and_random_seeds()
-        self.__prepare_filesystem()
-        self.__save_config_file(flags)
-        self.estimator = self.__build_estimator()
-
-    def __init_log_and_random_seeds(self):
-        """Inicializa semillas aleatorias para asegurar reproducibilidad, y
-        configura TensorFlow para loggear mensajes con prioridad INFO.
-        """
-        if self.random_seed is not None:
-            tf.set_random_seed(self.random_seed)
-        tf.logging.set_verbosity(tf.logging.INFO)
-
-    def __prepare_filesystem(self):
-        """Inicializa variables que no fueron entregadas, elimina logs y
-        checkpoints anteriores en caso de se requerido y crea las carpetas
-        necesarias para ejecutar el experimento en caso de que no existan.
-        """
-        root_path = os.getcwd()
-        # root_path = os.path.abspath(os.path.join(src_code_path, ".."))
-        # Revisamos si es que el experimento tiene nombre, y en caso de no ser
-        # así, le creamos uno
-        if self.experiment_name == "":
-            prev_unnamed_experiments = glob.glob(os.path.join(
-                root_path, "unnamed_experiment_*"))
-            self.experiment_name = "unnamed_experiment_{n}".format(
-                n=len(prev_unnamed_experiments) + 1)
-        # Logs y checkpoints son dependientes del experimento específico
-        if self.logs_and_checkpoints_dir == "":
-            self.logs_and_checkpoints_dir = os.path.join(
-                root_path, "logs_and_checkpoints", self.experiment_name)
-        # Bottlenecks, en cambio, dependen sólo del modelo y de las imágenes a
-        # entrenar
-        if self.bottlenecks_dir == "":
-            # Nos aseguramos de que fixed_images_dir NO tenga un slash al final
-            fixed_images_dir = self.images_dir[:-1] \
-                if self.images_dir[-1] == "/" else self.images_dir
-            # Nos aseguramos de que bottlenecks_dir SÍ tenga un slash al final
-            _, images_dir_name = os.path.split(fixed_images_dir)
-            self.bottlenecks_dir = os.path.join(
-                root_path, "data", "bottlenecks",
-                self.model_name, images_dir_name, "")
-        # Export_dir depende del experimento y del modelo
-        if self.export_model_dir == "":
-            self.export_model_dir = os.path.join(
-                root_path, "saved_models", self.experiment_name,
-                self.model_name)
-        # Results_dir depende sólo del experimento
-        if self.results_dir == "":
-            self.results_dir = os.path.join(
-                root_path, "results", self.experiment_name)
-
-        if self.remove_prev_ckpts_and_logs and \
-                os.path.exists(self.logs_and_checkpoints_dir):
-            shutil.rmtree(self.logs_and_checkpoints_dir)
-
-        os.makedirs(self.logs_and_checkpoints_dir, exist_ok=True)
-        os.makedirs(self.export_model_dir, exist_ok=True)
-        os.makedirs(self.results_dir, exist_ok=True)
-
-        if self.cache_bottlenecks:
-            os.makedirs(self.bottlenecks_dir, exist_ok=True)
-            for label_index in range(self.n_classes):
-                os.makedirs(
-                    os.path.join(self.bottlenecks_dir, str(label_index)),
-                    exist_ok=True)
-
-    def __save_config_file(self, flags):
-        """ Guarda un archivo json en self.results_dir con la configuración
-        utilizada
-
-        Args:
-            - flags: argparse.Namespace. Objeto con los parámetros del
-            modelo. Se genera tras llamar a parser.parse_known_args()
-            """
-        flags_as_dict = vars(flags)
-        config_file_path = os.path.join(self.results_dir, "config.json")
-        with open(config_file_path, "w") as config_json:
-            json.dump(flags_as_dict, config_json)
-
-    def __build_estimator(self, export=False):
-        """Construye un tf.Estimator basado en hub_module_estimator.
-
-        Args:
-            - export: bool. Indica si se construirá un tf.estimator para ser
-            exportado; en tal caso, cache_bottlenecks = False, independiente
-            de si los bottlenecks son o no cacheados durante el entrenamiento.
-            - warm_start: WarmStartSettings. Configuración para iniciar "en
-            caliente" el estimador.
-        Returns:
-            tf.Estimator, con model_fn igual a hub_module_estimator_model_fn.
-        """
-
-        cache_bottlenecks = False if export else self.cache_bottlenecks
-
-        params = {"module_spec": self.module_spec,
-                  "model_name": self.model_name,
-                  "n_classes": self.n_classes,
-                  "cache_bottlenecks": cache_bottlenecks,
-                  "bottlenecks_dir": self.bottlenecks_dir,
-                  "learning_rate": self.learning_rate,
-                  "fine_tuning": self.fine_tuning}
-
-        classifier = tf.estimator.Estimator(
-            model_fn=hub_bottleneck_model_fn,
-            model_dir=self.logs_and_checkpoints_dir,
-            config=tf.estimator.RunConfig(
-                tf_random_seed=self.random_seed,
-                save_checkpoints_steps=self.save_checkpoints_steps,
-                keep_checkpoint_max=20,
-                save_summary_steps=2),
-            params=params)
-
-        return classifier
-
-    def __train_input_fn(self, train_filenames, train_labels):
-        """Construye un dataset para ser utilizado como input_fn en la fase de
-        entrenamiento.
-
-        La principal diferencia con __eval_input_fn es que aquí si importan las
-        distorsiones aleatorias, las cuales no son utilizadas en el modo de
-        evaluación.
-
-        Args:
-            - train_filenames: [str]. Nombres de los archivos que serán
-            utilizados en el entrenamiento. Su formato es
-            label_original/filename.jpg, y la ubicación es relativa a
-            self.images_dir.
-            - train_labels: [int]. Etiquetas numéricas con las cuales se
-            realizará el entrenamiento.
-
-        Returns:
-            tf.data.Dataset, con mapeo de filenames a imágenes y distorsiones
-            aleatorias en caso de ser requeridas. Además, se le aplican las
-            operaciones shuffle, repeat y batch.
-        """
-        return tf_data_utils.create_images_dataset(
-            train_filenames,
-            train_labels,
-            image_shape=self.module_image_shape,
-            image_depth=self.module_image_depth,
-            src_dir=self.images_dir,
-            shuffle=True,
-            num_epochs=self.num_epochs,
-            batch_size=self.train_batch_size,
-            flip_left_right=self.flip_left_right,
-            random_crop=self.random_crop,
-            random_scale=self.random_scale,
-            random_brightness=self.random_brightness)
-
-    def __test_input_fn(self, test_filenames, test_labels):
-        """Construye un dataset para ser utilizado como input_fn en la fase de
-        pruebas.
-
-        La principal diferencia con __train_input_fn es que aquí no importan
-        las distorsiones aleatorias, las cuales sí son utilizadas en el modo de
-        entrenamiento. Además, esta función es para el modo de prueba posterior
-        al entrenamiento; es decir, con un conjunto de validación distinto al
-        conjunto de validación. Por ello, num_epochs = 1, y no se permuta
-        aleatoriamente el dataset. Además, batch_size = 100 (por ahora).
-
-        Args:
-            - test_filenames: [str]. Nombres de los archivos que serán
-            utilizados en la validación. Su formato es
-            label_original/filename.jpg, y la ubicación es relativa a
-            self.images_dir.
-            - test_labels: [int]. Etiquetas numéricas con las cuales se
-            realizará la validación.
-            - final_test: bool. Si es True, batch_size será igual a
-            len(test_filenames), ya que se evaluará con todo el conjunto.
-            En caso contrario, batch_size será igual a
-            self.test_batch_size.
-
-        Returns:
-            tf.data.Dataset, con mapeo de filenames a imágenes. Además, se
-            aplican las operaciones shuffle, repeat y batch.
-        """
-
-        return tf_data_utils.create_images_dataset(
-            test_filenames, test_labels, image_shape=self.module_image_shape,
-            image_depth=self.module_image_depth,
-            src_dir=self.images_dir, shuffle=False, num_epochs=1,
-            batch_size=self.test_batch_size)
-
-    def __serving_input_receiver_fn(self):
-        """Construye una input_fn para ser utilizada al exportar el modelo.
-
-        Returns:
-           ServingInputReceiver, listo para ser usado en conjunto con
-           estimator.export_model
-        """
-        feature_spec = {
-            'image': tf.FixedLenFeature([], dtype=tf.string)
-        }
-
-        default_batch_size = 1
-        serialized_tf_example = tf.placeholder(
-            dtype=tf.string, shape=[default_batch_size],
-            name='input_image_tensor')
-
-        received_tensors = {'images': serialized_tf_example}
-        features = tf.parse_example(serialized_tf_example, feature_spec)
-
-        map_fn = lambda img: tf_data_utils.decode_image_from_string(
-            img, self.module_image_shape, self.module_image_depth)
-
-        features['image'] = tf.map_fn(
-            map_fn, features['image'], dtype=tf.float32)
-
-        return tf.estimator.export.ServingInputReceiver(features,
-                                                        received_tensors)
-
-    def _save_best_checkpoint(self, global_step):
-        """Guarda el mejor checkpoint con un nombre distinto, para evitar que
-        sea borrado. Además, borra el mejor checkpoint anterior (para evitar
-        utilizar demasiado espacio en disco)
-
-        Args:
-            - global_step: int. Paso global al cual corresponde el checkpoint
-            que se desea guardar.
-        """
-
-        # Eliminamos best_model previo
-        prev_best_ckpt = glob.glob(os.path.join(self.logs_and_checkpoints_dir,
-                                                "best_model.ckpt*"))
-        for file in prev_best_ckpt:
-            os.remove(file)
-
-        # Guardamos el best_model actual
-        template_checkpoint = os.path.join(self.logs_and_checkpoints_dir,
-                                           "model.ckpt-{global_step}*")
-        checkpoint_files = glob.glob(template_checkpoint.format(
-            global_step=global_step))
-        for checkpoint_file in checkpoint_files:
-            _, file_name_ext = os.path.split(checkpoint_file)
-            new_file = os.path.join(self.logs_and_checkpoints_dir,
-                                    "best_" + file_name_ext)
-            shutil.copyfile(checkpoint_file, new_file)
-
-    def train(self, train_filenames, train_labels):
-        """Entrena el tf.Estimator
-
-        Primero construye la input_fn con que se alimentará el modelo, y luego
-        lo entrena.
-
-        Args:
-            - train_filenames: [str]. Nombres de los archivos que serán
-            utilizados en el entrenamiento. Su formato es
-            label_original/filename.jpg, y la ubicación es relativa a
-            self.images_dir.
-            - train_labels: [int]. Etiquetas numéricas con las cuales se
-            realizará el entrenamiento.
-            - hooks: [SessionRunHooks]. Lista de hooks que deben ser ejecutados
-            durante el entrenamiento.
-        """
-        train_input_fn = lambda: self.__train_input_fn(
-            train_filenames, train_labels)
-        train_log = build_logging_tensor_hook(self.tensors_to_log_train)
-        self.estimator.train(input_fn=train_input_fn,
-                             steps=self.num_epochs, hooks=[train_log])
-
-    def test_and_predict(self, filenames, labels, partition_name=""):
-        """Evalúa el tf.Estimator
-
-        Primero construye la input_fn con que se alimentará el modelo, y luego
-        lo evalúa.
-
-        Args:
-            - filenames: [str]. Nombres de los archivos que serán
-            utilizados en la evaluación. Su formato es
-            label_original/filename.jpg, y la ubicación es relativa a
-            self.images_dir.
-            - labels: [int]. Etiquetas numéricas con las cuales se
-            realizará la evaluación.
-        """
-        test_input_fn = lambda: self.__test_input_fn(filenames,
-                                                     labels)
-
-        eval_results = self.estimator.evaluate(input_fn=test_input_fn)
-        print(eval_results)
-
-        predictions = self.estimator.predict(input_fn=test_input_fn)
-        header = "Filename / Real Class / Predicted Class\n"
-        lines = [header]
-        for index, pred in enumerate(predictions):
-            filename = filenames[index]
-            real_class = labels[index]
-            predicted_class = pred['classes']
-            line = "{fn} {real} {predicted}\n".format(
-                fn=filename, real=real_class, predicted=predicted_class)
-            lines.append(line)
-        output = os.path.join(
-            self.results_dir, partition_name + "_predictions.txt")
-        with open(output, "w") as file:
-            file.writelines(lines)
-
-    def train_and_evaluate(self, train_filenames, train_labels,
-                           validation_filenames, validation_labels):
-        """Entrena y evalúa un modelo durante el mismo loop
-
-        Args:
-            - train_filenames: [str]. Nombres de los archivos que serán
-            utilizados en el entrenamiento. Su formato es
-            label_original/filename.jpg, y la ubicación es relativa a
-            self.images_dir.
-            - train_labels: [int]. Etiquetas numéricas con las cuales se
-            realizará el entrenamiento.
-            - validation_filenames: [str]. Nombres de los archivos que serán
-            utilizados en la evaluación. Su formato es
-            label_original/filename.jpg, y la ubicación es relativa a
-            self.images_dir.
-            - validation_labels: [int]. Etiquetas numéricas con las cuales se
-            realizará la evaluación.
-            - train_hooks: [SessionRunHooks]. Lista de hooks que deben ser
-            ejecutados durante el entrenamiento.
-            - validation_ooks: [SessionRunHooks]. Lista de hooks que deben ser
-            ejecutados durante la evaluación.
-        """
-
-        iterations = self.num_epochs // self.eval_frequency
-        print("# iterations:", iterations)
-
-        train_log = build_logging_tensor_hook(self.tensors_to_log_train)
-        val_log = build_logging_tensor_hook(self.tensors_to_log_val)
-
-        train_input_fn = lambda: self.__train_input_fn(
-            train_filenames, train_labels)
-        eval_input_fn = lambda: self.__test_input_fn(
-            validation_filenames, validation_labels)
-
-        best_accuracy = 0
-        best_global_step = 0
-
-        for __ in range(iterations):
-            train_filenames, train_labels = data_utils.shuffle_dataset(
-                train_filenames, train_labels)
-            self.estimator.train(input_fn=train_input_fn,
-                                 steps=self.eval_frequency,
-                                 hooks=[train_log])
-            evaluation_dict = self.estimator.evaluate(
-                eval_input_fn, hooks=[val_log])
-            if evaluation_dict['my_accuracy'] > best_accuracy:
-                best_accuracy = evaluation_dict['my_accuracy']
-                best_global_step = evaluation_dict['global_step']
-                self._save_best_checkpoint(best_global_step)
-
-        print("Mejor exactitud:", best_accuracy,
-              ", obtenida en paso número", best_global_step)
-
-    def export_graph(self):
-        """Exporta el grafo como un SavedModel estándar para ser utilizado
-        posteriormente
-        """
-        estimator_for_export = self.__build_estimator(export=True)
-        estimator_for_export.export_savedmodel(
-            self.export_model_dir, self.__serving_input_receiver_fn,
-            as_text=True)
 
 URLS_MODEL = {
     "inception_v3":
@@ -716,40 +292,452 @@ def get_parser():
     return parser
 
 
-def main(_):
-    """Función de entrada. Se obtienen los datasets desde dataset_json,
-    y se crea un HubModelExperiment, con el cual se entrena y evalúa el modelo,
-    para finalmente ser exportado.
+def get_experiment_from_config(config_file, n_classes):
+    """Crea un HubModelExperiment con la configuración guardada en un archivo.
+    Dado que el número de clases que tiene el modelo no está guardado en el
+    archivo de configuración generado, este valor debe pasarse aparte.
+
+    Args:
+        - config_file: dict. Diccionario con los valores de configuración.
+        Estos valores son los mismos que los definidos en get_parser.
+        - n_classes: int. Número de clases del modelo.
+
+    Returns:
+        HubModelExperiment ya inicializado.
     """
-    np.random.seed(FLAGS.random_seed)
-    with open(FLAGS.dataset_json) as file:
-        dataset_json = json.load(file)
+    flags = argparse.Namespace()
+    flags.__dict__.update(config_file)
+    return HubModelExperiment(flags, n_classes)
 
-    print("Obteniendo dataset desde archivo json")
-    train_filenames = np.array(dataset_json["train_features"])
-    train_labels = np.array(dataset_json["train_labels"])
-    validation_filenames = np.array(dataset_json["validation_features"])
-    validation_labels = np.array(dataset_json["validation_labels"])
-    test_filenames = np.array(dataset_json["test_features"])
-    test_labels = np.array(dataset_json["test_labels"])
-    n_classes = len(set(train_labels))
 
-    print("Creando HubModelExperiment")
-    hub_experiment = HubModelExperiment(FLAGS, n_classes)
+class HubModelExperiment:
+    """Clase para llevar a cabo un experimento con un hub_module_estimator.
 
-    print("Entrenando")
-    hub_experiment.train_and_evaluate(train_filenames, train_labels,
-                                      validation_filenames, validation_labels)
-    # hub_experiment.train(train_filenames, train_labels)
-    print("Evaluando con el conjunto de validación")
-    hub_experiment.test_and_predict(
-        validation_filenames, validation_labels, "validation")
-    print("Evaluando con el conjunto de prueba")
-    hub_experiment.test_and_predict(test_filenames, test_labels, "test")
-    print("Exportando")
-    hub_experiment.export_graph()
+    Esta clase está pensada para ser usada tras recibir parámetros desde la
+    línea de comandos, por lo cual recibe un objeto llamado flags con dicho
+    parámetros. Además, recibe el número de clases sobre las cuales se
+    realizará la clasificación (este parámetro se infiere desde el dataset y no
+    se entrega vía línea de comandos, por eso la diferenciación entre ambos
+    parámetros).
 
-if __name__ == "__main__":
-    PARSER = get_parser()
-    FLAGS, UNPARSED = PARSER.parse_known_args()
-    tf.app.run(main=main, argv=[sys.argv[0]] + UNPARSED)
+    Args:
+        - flags: argparse.Namespace. Objeto con parámetros necesarios para el
+        modelo. Se genera tras llamar a parser.parse_know_args().
+        - n_classes: int. Número de clases a clasificar.
+
+    Returns:
+        HubModelExperiment con un tf.Estimator basado en hub_module_estimator.
+    """
+
+    def __init__(self, flags, n_classes):
+        self.n_classes = n_classes
+
+        # Pasamos las variables relacionadas a la estructura del experimento
+        self.experiment_name = flags.experiment_name
+        self.model_name = flags.model_name
+        self.logs_and_checkpoints_dir = flags.logs_and_checkpoints_dir
+        self.export_model_dir = flags.export_model_dir
+        self.bottlenecks_dir = flags.bottlenecks_dir
+        self.results_dir = flags.results_dir
+        self.remove_prev_ckpts_and_logs = flags.remove_prev_ckpts_and_logs
+        self.random_seed = flags.random_seed
+
+        # Pasamos las variables relacionadas al dataset
+        # images_dir: hacemos esto para asegurar que el directorio esté
+        # en formato absoluto, y además para que tenga un slash al final
+        # siempre
+        self.images_dir = os.path.join(os.path.abspath(flags.images_dir), "")
+        self.flip_left_right = flags.flip_left_right
+        self.random_crop = flags.random_crop
+        self.random_scale = flags.random_scale
+        self.random_brightness = flags.random_brightness
+
+        # Pasamos las variables relacionadas al entrenamiento
+        self.train_batch_size = flags.train_batch_size
+        self.test_batch_size = flags.test_batch_size
+        self.num_epochs = flags.num_epochs
+        self.learning_rate = flags.learning_rate
+        self.tensors_to_log_train = flags.tensors_to_log_train
+        self.tensors_to_log_val = flags.tensors_to_log_val
+        self.save_checkpoints_steps = flags.save_checkpoints_steps
+        self.eval_frequency = flags.eval_frequency
+        self.fine_tuning = flags.fine_tuning
+
+        # Otras variables importantes
+        self.cache_bottlenecks = not self.fine_tuning and \
+            not tf_data_utils.should_distort_images(
+                self.flip_left_right, self.random_crop,
+                self.random_scale, self.random_brightness)
+        # Obtenemos el module_spec correspondiente
+        module_url = get_module_url(self.model_name)
+        self.module_spec = hub.load_module_spec(module_url)
+        self.module_image_shape = hub.get_expected_image_size(self.module_spec)
+        self.module_image_depth = hub.get_num_image_channels(self.module_spec)
+
+        self.__init_log_and_random_seeds()
+        self.__prepare_filesystem()
+        self.__save_config_file(flags)
+        self.estimator = self.__build_estimator()
+
+    def __init_log_and_random_seeds(self):
+        """Inicializa semillas aleatorias para asegurar reproducibilidad, y
+        configura TensorFlow para loggear mensajes con prioridad INFO.
+        """
+        if self.random_seed is not None:
+            tf.set_random_seed(self.random_seed)
+        tf.logging.set_verbosity(tf.logging.INFO)
+
+    def __prepare_filesystem(self):
+        """Inicializa variables que no fueron entregadas, elimina logs y
+        checkpoints anteriores en caso de se requerido y crea las carpetas
+        necesarias para ejecutar el experimento en caso de que no existan.
+        """
+        root_path = os.getcwd()
+        # root_path = os.path.abspath(os.path.join(src_code_path, ".."))
+        # Revisamos si es que el experimento tiene nombre, y en caso de no ser
+        # así, le creamos uno
+        if self.experiment_name == "":
+            prev_unnamed_experiments = glob.glob(os.path.join(
+                root_path, "unnamed_experiment_*"))
+            self.experiment_name = "unnamed_experiment_{n}".format(
+                n=len(prev_unnamed_experiments) + 1)
+        # Logs y checkpoints son dependientes del experimento específico
+        if self.logs_and_checkpoints_dir == "":
+            self.logs_and_checkpoints_dir = os.path.join(
+                root_path, "logs_and_checkpoints", self.experiment_name)
+        # Bottlenecks, en cambio, dependen sólo del modelo y de las imágenes a
+        # entrenar
+        if self.bottlenecks_dir == "":
+            # Nos aseguramos de que fixed_images_dir NO tenga un slash al final
+            fixed_images_dir = self.images_dir[:-1] \
+                if self.images_dir[-1] == "/" else self.images_dir
+            # Nos aseguramos de que bottlenecks_dir SÍ tenga un slash al final
+            _, images_dir_name = os.path.split(fixed_images_dir)
+            self.bottlenecks_dir = os.path.join(
+                root_path, "data", "bottlenecks",
+                self.model_name, images_dir_name, "")
+        # Export_dir depende del experimento y del modelo
+        if self.export_model_dir == "":
+            self.export_model_dir = os.path.join(
+                root_path, "saved_models", self.experiment_name,
+                self.model_name)
+        # Results_dir depende sólo del experimento
+        if self.results_dir == "":
+            self.results_dir = os.path.join(
+                root_path, "results", self.experiment_name)
+
+        if self.remove_prev_ckpts_and_logs and \
+                os.path.exists(self.logs_and_checkpoints_dir):
+            shutil.rmtree(self.logs_and_checkpoints_dir)
+
+        os.makedirs(self.logs_and_checkpoints_dir, exist_ok=True)
+        os.makedirs(self.export_model_dir, exist_ok=True)
+        os.makedirs(self.results_dir, exist_ok=True)
+
+        if self.cache_bottlenecks:
+            os.makedirs(self.bottlenecks_dir, exist_ok=True)
+            for label_index in range(self.n_classes):
+                os.makedirs(
+                    os.path.join(self.bottlenecks_dir, str(label_index)),
+                    exist_ok=True)
+
+    def __save_config_file(self, flags):
+        """ Guarda un archivo json en self.results_dir con la configuración
+        utilizada
+
+        Args:
+            - flags: argparse.Namespace. Objeto con los parámetros del
+            modelo. Se genera tras llamar a parser.parse_known_args()
+            """
+        flags_as_dict = vars(flags)
+        config_file_path = os.path.join(self.results_dir, "config.json")
+        with open(config_file_path, "w") as config_json:
+            json.dump(flags_as_dict, config_json)
+
+    def __build_estimator(self, checkpoint_path=None, export=False):
+        """Construye un tf.Estimator basado en hub_module_estimator.
+
+        Args:
+            - export: bool. Indica si se construirá un tf.estimator para ser
+            exportado; en tal caso, cache_bottlenecks = False, independiente
+            de si los bottlenecks son o no cacheados durante el entrenamiento.
+        Returns:
+            tf.Estimator, con model_fn igual a hub_module_estimator_model_fn.
+        """
+
+        cache_bottlenecks = False if export else self.cache_bottlenecks
+
+        params = {"module_spec": self.module_spec,
+                  "model_name": self.model_name,
+                  "n_classes": self.n_classes,
+                  "cache_bottlenecks": cache_bottlenecks,
+                  "bottlenecks_dir": self.bottlenecks_dir,
+                  "learning_rate": self.learning_rate,
+                  "fine_tuning": self.fine_tuning}
+
+        classifier = tf.estimator.Estimator(
+            model_fn=hub_bottleneck_model_fn,
+            model_dir=self.logs_and_checkpoints_dir,
+            config=tf.estimator.RunConfig(
+                tf_random_seed=self.random_seed,
+                save_checkpoints_steps=self.save_checkpoints_steps,
+                keep_checkpoint_max=20,
+                save_summary_steps=2),
+            params=params,
+            warm_start_from=checkpoint_path)
+
+        return classifier
+
+    def __train_input_fn(self, train_filenames, train_labels):
+        """Construye un dataset para ser utilizado como input_fn en la fase de
+        entrenamiento.
+
+        La principal diferencia con __eval_input_fn es que aquí si importan las
+        distorsiones aleatorias, las cuales no son utilizadas en el modo de
+        evaluación.
+
+        Args:
+            - train_filenames: [str]. Nombres de los archivos que serán
+            utilizados en el entrenamiento. Su formato es
+            label_original/filename.jpg, y la ubicación es relativa a
+            self.images_dir.
+            - train_labels: [int]. Etiquetas numéricas con las cuales se
+            realizará el entrenamiento.
+
+        Returns:
+            tf.data.Dataset, con mapeo de filenames a imágenes y distorsiones
+            aleatorias en caso de ser requeridas. Además, se le aplican las
+            operaciones shuffle, repeat y batch.
+        """
+        return tf_data_utils.create_images_dataset(
+            train_filenames,
+            train_labels,
+            image_shape=self.module_image_shape,
+            image_depth=self.module_image_depth,
+            src_dir=self.images_dir,
+            shuffle=True,
+            num_epochs=self.num_epochs,
+            batch_size=self.train_batch_size,
+            flip_left_right=self.flip_left_right,
+            random_crop=self.random_crop,
+            random_scale=self.random_scale,
+            random_brightness=self.random_brightness)
+
+    def __test_input_fn(self, test_filenames, test_labels):
+        """Construye un dataset para ser utilizado como input_fn en la fase de
+        pruebas.
+
+        La principal diferencia con __train_input_fn es que aquí no importan
+        las distorsiones aleatorias, las cuales sí son utilizadas en el modo de
+        entrenamiento. Además, esta función es para el modo de prueba posterior
+        al entrenamiento; es decir, con un conjunto de validación distinto al
+        conjunto de validación. Por ello, num_epochs = 1, y no se permuta
+        aleatoriamente el dataset. Además, batch_size = 100 (por ahora).
+
+        Args:
+            - test_filenames: [str]. Nombres de los archivos que serán
+            utilizados en la validación. Su formato es
+            label_original/filename.jpg, y la ubicación es relativa a
+            self.images_dir.
+            - test_labels: [int]. Etiquetas numéricas con las cuales se
+            realizará la validación.
+            - final_test: bool. Si es True, batch_size será igual a
+            len(test_filenames), ya que se evaluará con todo el conjunto.
+            En caso contrario, batch_size será igual a
+            self.test_batch_size.
+
+        Returns:
+            tf.data.Dataset, con mapeo de filenames a imágenes. Además, se
+            aplican las operaciones shuffle, repeat y batch.
+        """
+
+        return tf_data_utils.create_images_dataset(
+            test_filenames, test_labels, image_shape=self.module_image_shape,
+            image_depth=self.module_image_depth,
+            src_dir=self.images_dir, shuffle=False, num_epochs=1,
+            batch_size=self.test_batch_size)
+
+    def __serving_input_receiver_fn(self):
+        """Construye una input_fn para ser utilizada al exportar el modelo.
+
+        Returns:
+           ServingInputReceiver, listo para ser usado en conjunto con
+           estimator.export_model
+        """
+        feature_spec = {
+            'image': tf.FixedLenFeature([], dtype=tf.string)
+        }
+
+        default_batch_size = 1
+        serialized_tf_example = tf.placeholder(
+            dtype=tf.string, shape=[default_batch_size],
+            name='input_image_tensor')
+
+        received_tensors = {'images': serialized_tf_example}
+        features = tf.parse_example(serialized_tf_example, feature_spec)
+
+        map_fn = lambda img: tf_data_utils.decode_image_from_string(
+            img, self.module_image_shape, self.module_image_depth)
+
+        features['image'] = tf.map_fn(
+            map_fn, features['image'], dtype=tf.float32)
+
+        return tf.estimator.export.ServingInputReceiver(features,
+                                                        received_tensors)
+
+    def _save_best_checkpoint(self, global_step):
+        """Guarda el mejor checkpoint con un nombre distinto, para evitar que
+        sea borrado. Además, borra el mejor checkpoint anterior (para evitar
+        utilizar demasiado espacio en disco)
+
+        Args:
+            - global_step: int. Paso global al cual corresponde el checkpoint
+            que se desea guardar.
+        """
+
+        # Eliminamos best_model previo
+        prev_best_ckpt = glob.glob(os.path.join(self.logs_and_checkpoints_dir,
+                                                "best_model.ckpt*"))
+        for file in prev_best_ckpt:
+            os.remove(file)
+
+        # Guardamos el best_model actual
+        template_checkpoint = os.path.join(self.logs_and_checkpoints_dir,
+                                           "model.ckpt-{global_step}*")
+        checkpoint_files = glob.glob(template_checkpoint.format(
+            global_step=global_step))
+        for checkpoint_file in checkpoint_files:
+            _, file_name_ext = os.path.split(checkpoint_file)
+            new_file = os.path.join(self.logs_and_checkpoints_dir,
+                                    "best_" + file_name_ext)
+            shutil.copyfile(checkpoint_file, new_file)
+
+    def load_estimator_from_chekpoint(self, checkpoint_path):
+        """Actualiza self.estimator con un nuevo tf.Estimator iniciado desde
+        un checkpoint.
+
+        Args:
+            - checkpoint_path: str. Ubicación del checkpoint con el cual se
+            desea inicializar el tf.Estimator.
+        """
+        self.estimator = self.__build_estimator(
+            checkpoint_path=checkpoint_path)
+
+    def train(self, train_filenames, train_labels):
+        """Entrena el tf.Estimator
+
+        Primero construye la input_fn con que se alimentará el modelo, y luego
+        lo entrena.
+
+        Args:
+            - train_filenames: [str]. Nombres de los archivos que serán
+            utilizados en el entrenamiento. Su formato es
+            label_original/filename.jpg, y la ubicación es relativa a
+            self.images_dir.
+            - train_labels: [int]. Etiquetas numéricas con las cuales se
+            realizará el entrenamiento.
+            - hooks: [SessionRunHooks]. Lista de hooks que deben ser ejecutados
+            durante el entrenamiento.
+        """
+        train_input_fn = lambda: self.__train_input_fn(
+            train_filenames, train_labels)
+        train_log = build_logging_tensor_hook(self.tensors_to_log_train)
+        self.estimator.train(input_fn=train_input_fn,
+                             steps=self.num_epochs, hooks=[train_log])
+
+    def test_and_predict(self, filenames, labels, partition_name=""):
+        """Evalúa el tf.Estimator
+
+        Primero construye la input_fn con que se alimentará el modelo, y luego
+        lo evalúa.
+
+        Args:
+            - filenames: [str]. Nombres de los archivos que serán
+            utilizados en la evaluación. Su formato es
+            label_original/filename.jpg, y la ubicación es relativa a
+            self.images_dir.
+            - labels: [int]. Etiquetas numéricas con las cuales se
+            realizará la evaluación.
+        """
+        test_input_fn = lambda: self.__test_input_fn(filenames,
+                                                     labels)
+
+        eval_results = self.estimator.evaluate(input_fn=test_input_fn)
+        print(eval_results)
+
+        predictions = self.estimator.predict(input_fn=test_input_fn)
+        header = "Filename / Real Class / Predicted Class\n"
+        lines = [header]
+        for index, pred in enumerate(predictions):
+            filename = filenames[index]
+            real_class = labels[index]
+            predicted_class = pred['classes']
+            line = "{fn} {real} {predicted}\n".format(
+                fn=filename, real=real_class, predicted=predicted_class)
+            lines.append(line)
+        output = os.path.join(
+            self.results_dir, partition_name + "_predictions.txt")
+        with open(output, "w") as file:
+            file.writelines(lines)
+
+    def train_and_evaluate(self, train_filenames, train_labels,
+                           validation_filenames, validation_labels):
+        """Entrena y evalúa un modelo durante el mismo loop
+
+        Args:
+            - train_filenames: [str]. Nombres de los archivos que serán
+            utilizados en el entrenamiento. Su formato es
+            label_original/filename.jpg, y la ubicación es relativa a
+            self.images_dir.
+            - train_labels: [int]. Etiquetas numéricas con las cuales se
+            realizará el entrenamiento.
+            - validation_filenames: [str]. Nombres de los archivos que serán
+            utilizados en la evaluación. Su formato es
+            label_original/filename.jpg, y la ubicación es relativa a
+            self.images_dir.
+            - validation_labels: [int]. Etiquetas numéricas con las cuales se
+            realizará la evaluación.
+            - train_hooks: [SessionRunHooks]. Lista de hooks que deben ser
+            ejecutados durante el entrenamiento.
+            - validation_ooks: [SessionRunHooks]. Lista de hooks que deben ser
+            ejecutados durante la evaluación.
+        """
+
+        iterations = self.num_epochs // self.eval_frequency
+        print("# iterations:", iterations)
+
+        train_log = build_logging_tensor_hook(self.tensors_to_log_train)
+        val_log = build_logging_tensor_hook(self.tensors_to_log_val)
+
+        train_input_fn = lambda: self.__train_input_fn(
+            train_filenames, train_labels)
+        eval_input_fn = lambda: self.__test_input_fn(
+            validation_filenames, validation_labels)
+
+        best_accuracy = 0
+        best_global_step = 0
+
+        for __ in range(iterations):
+            train_filenames, train_labels = data_utils.shuffle_dataset(
+                train_filenames, train_labels)
+            self.estimator.train(input_fn=train_input_fn,
+                                 steps=self.eval_frequency,
+                                 hooks=[train_log])
+            evaluation_dict = self.estimator.evaluate(
+                eval_input_fn, hooks=[val_log])
+            if evaluation_dict['my_accuracy'] > best_accuracy:
+                best_accuracy = evaluation_dict['my_accuracy']
+                best_global_step = evaluation_dict['global_step']
+                self._save_best_checkpoint(best_global_step)
+
+        print("Mejor exactitud:", best_accuracy,
+              ", obtenida en paso número", best_global_step)
+
+    def export_graph(self):
+        """Exporta el grafo como un SavedModel estándar para ser utilizado
+        posteriormente
+        """
+        estimator_for_export = self.__build_estimator(export=True)
+        estimator_for_export.export_savedmodel(
+            self.export_model_dir, self.__serving_input_receiver_fn,
+            as_text=True)
