@@ -1,4 +1,4 @@
-"""Módulo con funciones utilitarias para trabajar con imágenes
+"""Módulo con funciones utilitarias para trabajar con imágenes.
 """
 
 import os
