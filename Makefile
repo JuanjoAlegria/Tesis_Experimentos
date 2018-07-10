@@ -182,7 +182,7 @@ data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json
 ALL_PATCHES_DIR = ihc_all_patches_$(MAGNIFICATION)
 
 data/processed/$(ALL_PATCHES_DIR): 
-	$(PYTHON_BIN) -m src.scripts.ihc.extract_patches_from_rois \
+	$(PYTHON_BIN) -m src.scripts.ihc.extract_all_patches \
 		--excel_file data/extras/$(SLIDES_DIR)/HER2.xlsx \
 		--slides_dir data/raw/$(SLIDES_DIR) \
 		--patches_dir $@ \
