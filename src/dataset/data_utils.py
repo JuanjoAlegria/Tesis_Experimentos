@@ -2,6 +2,7 @@
 """
 import os
 import json
+import itertools
 import numpy as np
 
 FULL_DATASET = "all"
@@ -294,3 +295,74 @@ def check_integrity_dumped_dataset(dataset_path, labels_map):
         for filename, label in zip(partition_features, partition_labels):
             label_from_filename, _ = os.path.split(filename)
             assert labels_map[label_from_filename] == label
+
+
+def generate_uneven_partition(some_list, n_partitions):
+    """Particiona una lista de forma casi equilibrada, buscando que cada
+    partición tenga aproximadamente la misma cantidad de elementos.
+
+    Args:
+        - some_list: list[any]. Lista a particionar.
+        - n_partitions: int. Número deseado de particiones.
+
+    Returns:
+        - list[list[any]], lista con las particiones.
+    """
+    return [some_list[idx::n_partitions] for idx in range(n_partitions)]
+
+
+def generate_kfold(negative_slides, equivocal_slides, positive_slides,
+                   n_folds, train_dir, test_dir):
+
+    import pdb
+    pdb.set_trace()  # breakpoint c6027473 //
+
+    if n_folds == -1:
+        n_folds = min(len(negative_slides), len(
+            equivocal_slides), len(positive_slides))
+
+    # Se unen las clases 0 y 1 (ambas son negativas)
+    labels_map = {'0': 1, '1': 1, '2': 2, '3': 3}
+
+    train_fname, train_labels, _ = get_filenames_and_labels(
+        train_dir, labels_map=labels_map)
+    test_fname, test_labels, _ = get_filenames_and_labels(
+        test_dir, labels_map=labels_map)
+
+    train_data = zip(train_fname, train_labels)
+    test_data = zip(test_fname, test_labels)
+
+    negative_slides = np.random.permutation(negative_slides).tolist()
+    equivocal_slides = np.random.permutation(equivocal_slides).tolist()
+    positive_slides = np.random.permutation(positive_slides).tolist()
+
+    negative_part = generate_uneven_partition(negative_slides, n_folds)
+    equivocal_part = generate_uneven_partition(equivocal_slides, n_folds)
+    positive_part = generate_uneven_partition(positive_slides, n_folds)
+
+    filter_fn = lambda fname, label, ids: \
+        fname.split("/")[1].split("_")[0] in ids
+
+    for idx in range(n_folds):
+        test_ids = negative_part[idx] + equivocal_part[idx] + \
+            positive_part[idx]
+
+        train_ids = negative_part[:idx] + negative_part[idx + 1:] + \
+            equivocal_part[:idx] + equivocal_part[idx + 1:] + \
+            positive_part[:idx] + positive_part[idx + 1:]
+
+        train_ids = list(itertools.chain.from_iterable(train_ids))
+
+        train_fold = filter(lambda fname, label:
+                            filter_fn(fname, label, train_ids),
+                            train_data)
+        test_fold = filter(lambda fname, label:
+                           filter_fn(fname, label, test_ids),
+                           test_data)
+
+        train_fold_fnames, train_fold_labels = zip(*train_fold)
+        test_fold_fnames, test_fold_labels = zip(*test_fold)
+
+        (train_fold_fnames, train_fold_labels), \
+            (val_fold_fnames, val_fold_labels) = generate_validation_set(
+                train_fold_fnames, train_fold_labels, 80)
