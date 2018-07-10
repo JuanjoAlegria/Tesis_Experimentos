@@ -190,5 +190,5 @@ data/processed/$(ALL_PATCHES_DIR):
 		--patches_width 300 \
 		--magnification $(MAGNIFICATION)
 
-extract_all_patches: data/processed/$(ALL_PATCHES_DIR):
+extract_all_patches: data/processed/$(ALL_PATCHES_DIR)
 	echo 'hola'
