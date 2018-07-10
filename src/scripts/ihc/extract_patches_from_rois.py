@@ -116,10 +116,10 @@ if __name__ == "__main__":
         help="""\
         Directorio donde se guardarán los parches extraídos desde los ROIs. 
         En caso de no entregar un valor, los parches serán guardado en la
-        carpeta data/processed/ihc_patches_x40.\
+        carpeta data/processed/ihc_patches_from_rois_x40.\
         """,
         default=os.path.join(os.getcwd(), "data",
-                             "processed", "ihc_patches_x40")
+                             "processed", "ihc_patches_from_rois_x40")
     )
     PARSER.add_argument(
         '--valid_owners',

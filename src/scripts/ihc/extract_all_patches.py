@@ -11,6 +11,13 @@ from ...ndp import ndpisplit_wrapper
 
 
 def move_patches(slide_id, src_dir, dst_dir):
+    """Mueve a otra ubicación todos los parches extraídos desde una slide.
+
+    Args:
+        - slide_id: str. Id de la slide cuyos parches se desea mover.
+        - src_dir: str. Directorio donde están ubicados los parches.
+        - dst_dir: str. Directorio hacia donde se moverán los parches.
+    """
     patches = glob.glob(os.path.join(src_dir, "{}_*.tif".format(slide_id)))
     print("Transformando a jpeg parches de slide", slide_id)
     for patch in patches:
@@ -86,7 +93,7 @@ if __name__ == "__main__":
         help="""\
         Directorio donde se guardarán los parches extraídos desde los ROIs. 
         En caso de no entregar un valor, los parches serán guardado en la
-        carpeta data/processed/ihc_patches_x40.\
+        carpeta data/processed/ihc_all_patches_x40 .\
         """,
         default=os.path.join(os.getcwd(), "data",
                              "processed", "ihc_all_patches_x40")
