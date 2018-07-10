@@ -48,9 +48,6 @@ def main(excel_file, slides_dir, patches_dir,
         print(ndpi_path)
         slide = openslide.OpenSlide(ndpi_path)
         width_l0 = int(slide.properties['openslide.level[0].width'])
-        import pdb
-        pdb.set_trace()  # breakpoint f073c3ab //
-
         height_l0 = int(slide.properties['openslide.level[0].height'])
         current_dst_dir = os.path.join(patches_dir, slide_label)
         os.makedirs(current_dst_dir, exist_ok=True)
