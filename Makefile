@@ -61,34 +61,34 @@ MAGNIFICATION = x40
 NUM_EPOCHS = 5000
 FINE_TUNING = True
 
-DASASET_SLIDES = ihc_slides
-DATASET_ROIS = ihc_rois_$(MAGNIFICATION)
-DATASET_PATCHES = ihc_patches_$(MAGNIFICATION)
-PATCHES_EXPERIMENT_NAME = $(DATASET_PATCHES)_experiment
-data/extras/$(DASASET_SLIDES)/annotations:
+SLIDES_DIR = ihc_slides
+ROIS_DIR = ihc_rois_$(MAGNIFICATION)
+PATCHES_FROM_ROIS_DIR = ihc_patches_from_rois_$(MAGNIFICATION)
+
+data/extras/$(SLIDES_DIR)/annotations:
 # Pedirá que ingrese Usuario y contraseña para ndp.microscopiavirtual.com
 	$(PYTHON_BIN) -m src.scripts.ihc.get_annotations \
 		--folder_id 10590 \
 		--annotations_dir $@
 
-data/extras/$(DASASET_SLIDES)/serialized_annotations: \
-data/extras/$(DASASET_SLIDES)/annotations
+data/extras/$(SLIDES_DIR)/serialized_annotations: \
+data/extras/$(SLIDES_DIR)/annotations
 	$(PYTHON_BIN) -m src.scripts.ihc.get_csv_and_serialize_annotations \
 		--annotations_dir $< \
 		--save_dir $@ \
 		--csv_path $@/summary.csv
 
-data/interim/$(DATASET_ROIS): \
-data/extras/$(DASASET_SLIDES)/serialized_annotations
+data/interim/$(ROIS_DIR): \
+data/extras/$(SLIDES_DIR)/serialized_annotations
 	$(PYTHON_BIN) -m src.scripts.ihc.extract_rois_from_slides \
 		--serialized_annotations_dir $< \
-		--slides_dir data/raw/$(DASASET_SLIDES) \
+		--slides_dir data/raw/$(SLIDES_DIR) \
 		--rois_dir $@ \
 		--magnification $(MAGNIFICATION)
 
-data/processed/$(DATASET_PATCHES): data/interim/$(DATASET_ROIS)
+data/processed/$(PATCHES_FROM_ROIS_DIR): data/interim/$(ROIS_DIR)
 	$(PYTHON_BIN) -m src.scripts.ihc.extract_patches_from_rois \
-		--excel_file data/extras/$(DASASET_SLIDES)/HER2.xlsx \
+		--excel_file data/extras/$(SLIDES_DIR)/HER2.xlsx \
 		--rois_dir $< \
 		--patches_dir $@ \
 		--valid_owners UI.Patologo2 \
@@ -99,8 +99,8 @@ data/processed/$(DATASET_PATCHES): data/interim/$(DATASET_ROIS)
 		--threshold_gray_pixels 0.9
 
 
-data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json: \
-data/processed/$(DATASET_PATCHES)
+data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json: \
+data/processed/$(PATCHES_FROM_ROIS_DIR)
 	$(PYTHON_BIN) -m src.scripts.ihc.generate_dataset \
 		--images_dir $< \
 		--dataset_path $@ \
@@ -109,16 +109,16 @@ data/processed/$(DATASET_PATCHES)
 		--random_seed $(RANDOM_SEED)
 
 clear_patches_experiment:
-	rm -r data/extras/$(DASASET_SLIDES)/annotations  || true
-	rm -r data/extras/$(DASASET_SLIDES)/serialized_annotations  || true
-	rm -r data/interim/$(DATASET_ROIS) || true
-	rm -r data/processed/$(DATASET_PATCHES) || true
-	rm -r data/partitions_json/$(DATASET_PATCHES) || true
+	rm -r data/extras/$(SLIDES_DIR)/annotations  || true
+	rm -r data/extras/$(SLIDES_DIR)/serialized_annotations  || true
+	rm -r data/interim/$(ROIS_DIR) || true
+	rm -r data/processed/$(PATCHES_FROM_ROIS_DIR) || true
+	rm -r data/partitions_json/$(PATCHES_FROM_ROIS_DIR) || true
 
-patches_experiment: data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
+patches_experiment: data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json
 	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
-		--experiment_name $(DATASET_PATCHES)_experiment \
-		--images_dir data/processed/$(DATASET_PATCHES) \
+		--experiment_name $(PATCHES_FROM_ROIS_DIR)_experiment \
+		--images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
 		--num_epochs $(NUM_EPOCHS) \
@@ -128,10 +128,10 @@ patches_experiment: data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 		--eval_frequency 100
 
 patches_random_experiment: \
-data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
+data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json
 	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
-		--experiment_name $(DATASET_PATCHES)_random_experiment \
-		--images_dir data/processed/$(DATASET_PATCHES) \
+		--experiment_name $(PATCHES_FROM_ROIS_DIR)_random_experiment \
+		--images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
 		--num_epochs $(NUM_EPOCHS) \
@@ -145,10 +145,10 @@ data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 		--random_brightness 5
 
 patches_fine_tuning_experiment: \
-data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
+data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json
 	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
-		--experiment_name $(DATASET_PATCHES)_fine_tuning_experiment \
-		--images_dir data/processed/$(DATASET_PATCHES) \
+		--experiment_name $(PATCHES_FROM_ROIS_DIR)_fine_tuning_experiment \
+		--images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
 		--num_epochs $(NUM_EPOCHS) \
@@ -159,10 +159,10 @@ data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 		--fine_tuning
 
 patches_random_fine_tuning_experiment: \
-data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
+data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json
 	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
-		--experiment_name $(DATASET_PATCHES)_random_fine_tuning_experiment \
-		--images_dir data/processed/$(DATASET_PATCHES) \
+		--experiment_name $(PATCHES_FROM_ROIS_DIR)_random_fine_tuning_experiment \
+		--images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
 		--num_epochs $(NUM_EPOCHS) \
@@ -175,3 +175,18 @@ data/partitions_json/$(DATASET_PATCHES)/dataset_dict.json
 		--random_scale 20 \
 		--random_brightness 5 \
 		--fine_tuning
+
+
+###################### SLIDE CLASSIFICATION EXPERIMENT #######################
+
+ALL_PATCHES_DIR = ihc_all_patches_$(MAGNIFICATION)
+
+data/processed/$(ALL_PATCHES_DIR): 
+	$(PYTHON_BIN) -m src.scripts.ihc.extract_patches_from_rois \
+		--excel_file data/extras/$(SLIDES_DIR)/HER2.xlsx \
+		--slides_dir data/raw/$(SLIDES_DIR) \
+		--patches_dir $@ \
+		--patches_height 300 \
+		--patches_width 300 \
+		--magnification $(MAGNIFICATION)
+
