@@ -184,7 +184,8 @@ data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json
 ###################### SLIDE CLASSIFICATION EXPERIMENT #######################
 
 ALL_PATCHES_DIR = ihc_all_patches_$(MAGNIFICATION)
-
+N_FOLDS = 5
+PROPORTION_THRESHOLD = 0.1
 data/processed/$(ALL_PATCHES_DIR): 
 	$(PYTHON_BIN) -m src.scripts.ihc.extract_all_patches \
 		--excel_file data/extras/$(SLIDES_DIR)/HER2.xlsx \
@@ -209,9 +210,24 @@ data/processed/$(PATCHES_FROM_ROIS_DIR)
 		--json_path $@
 
 
-
+data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold: \
+data/extras/ihc_slides/tissue_proportion_$(PATCHES_FROM_ROIS_DIR).json \
+data/extras/ihc_slides/tissue_proportion_$(ALL_PATCHES_DIR).json 
+	$(PYTHON_BIN) -m src.scripts.ihc.generate_kfold_dataset \
+		--excel_file data/extras/$(SLIDES_DIR)/HER2.xlsx \
+		--n_folds $(N_FOLDS) \
+		--train_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--test_dir data/processed/$(ALL_PATCHES_DIR) \
+		--dataset_dst_dir $@ \
+		--train_proportions_json $< \
+		--test_proportions_json $(word 2,$^) \
+		--proportion_threshold $(PROPORTION_THRESHOLD)
 
 calculate_all_tissue_proportions: \
 data/extras/ihc_slides/tissue_proportion_$(PATCHES_FROM_ROIS_DIR).json \
 data/extras/ihc_slides/tissue_proportion_$(ALL_PATCHES_DIR).json
 	echo 'hola'
+
+generate_kfold_dataset: \
+data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold
+	echo 'listo'
