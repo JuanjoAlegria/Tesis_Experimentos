@@ -6,6 +6,34 @@ import numpy as np
 import cv2
 
 
+def calculate_tissue_proportion(image):
+    """Calcula la proporción de tejido que hay en una imagen con respecto al
+    total de pixeles en la imagen.
+
+    Para realizar esto, primero se calcula la cantidad de pixeles grises (
+    aquellos que no contienen tejido) usando simplemente un inRange en la
+    imagen RGB. Luego, se calcula la diferencia (es decir, los pixeles que
+    sí tienen tejido) y con ello se calcula su proporción respecto al total de
+    pixeles.
+
+    Args:
+        - image: np.array(), imagen con tres canales
+
+    Returns:
+        float en el rango [0,1] que representa la proporción de tejido en la 
+        imagen con respecto al total de pixeles en ésta.
+    """
+    lower = np.array([225, 225, 225])
+    upper = np.array([255, 255, 255])
+
+    non_tissue_pixels = cv2.inRange(image, lower, upper)
+    n_non_tissue_pixels = np.count_nonzero(non_tissue_pixels)
+    n_pixels = image.shape[0] * image.shape[1]
+    n_tissue_pixels = n_pixels - n_non_tissue_pixels
+
+    return n_tissue_pixels / n_pixels
+
+
 def is_useful_patch(image, threshold_proportion=0.7):
     """Retorna True si es que la cantidad de pixeles grises en la imagen
     es menor a cierta proporción de pixeles en la imagen.
@@ -20,14 +48,9 @@ def is_useful_patch(image, threshold_proportion=0.7):
         a threshold_proportion multiplicado por la cantidad total de pixeles,
         False en caso contrario.
     """
-    lower = np.array([225, 225, 225])
-    upper = np.array([255, 255, 255])
-    gray_pixels = cv2.inRange(image, lower, upper)
-    n_gray_pixels = np.count_nonzero(gray_pixels)
 
-    n_pixels = image.shape[0] * image.shape[1]
-    threshold_proportion = 0.7
-    return n_gray_pixels < threshold_proportion * n_pixels
+    unuseful_proportion = 1 - calculate_tissue_proportion(image)
+    return unuseful_proportion < threshold_proportion
 
 
 def extract_patches(image_path, patch_height, patch_width,
