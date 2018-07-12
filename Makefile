@@ -65,6 +65,10 @@ SLIDES_DIR = ihc_slides
 ROIS_DIR = ihc_rois_$(MAGNIFICATION)
 PATCHES_FROM_ROIS_DIR = ihc_patches_from_rois_$(MAGNIFICATION)
 
+PATCHES_HEIGHT = 300
+PATCHES_WIDTH = 300
+
+
 data/extras/$(SLIDES_DIR)/annotations:
 # Pedirá que ingrese Usuario y contraseña para ndp.microscopiavirtual.com
 	$(PYTHON_BIN) -m src.scripts.ihc.get_annotations \
@@ -92,8 +96,8 @@ data/processed/$(PATCHES_FROM_ROIS_DIR): data/interim/$(ROIS_DIR)
 		--rois_dir $< \
 		--patches_dir $@ \
 		--valid_owners UI.Patologo2 \
-		--patches_height 300 \
-		--patches_width 300 \
+		--patches_height $(PATCHES_HEIGHT) \
+		--patches_width $(PATCHES_WIDTH) \
 		--stride_rows 250 \
 		--stride_columns 250 \
 		--threshold_gray_pixels 0.9
@@ -186,9 +190,28 @@ data/processed/$(ALL_PATCHES_DIR):
 		--excel_file data/extras/$(SLIDES_DIR)/HER2.xlsx \
 		--slides_dir data/raw/$(SLIDES_DIR) \
 		--patches_dir $@ \
-		--patches_height 300 \
-		--patches_width 300 \
+		--patches_height $(PATCHES_HEIGHT) \
+		--patches_width $(PATCHES_WIDTH) \
 		--magnification $(MAGNIFICATION)
 
-extract_all_patches: data/processed/$(ALL_PATCHES_DIR)
+
+
+data/extras/ihc_slides/tissue_proportion_$(ALL_PATCHES_DIR).json: \
+data/processed/$(ALL_PATCHES_DIR)
+	$(PYTHON_BIN) -m src.scripts.ihc.calculate_tissue_proportion \
+		--patches_dir $< \
+		--json_path $@
+
+data/extras/ihc_slides/tissue_proportion_$(PATCHES_FROM_ROIS_DIR).json: \
+data/processed/$(PATCHES_FROM_ROIS_DIR)
+	$(PYTHON_BIN) -m src.scripts.ihc.calculate_tissue_proportion \
+		--patches_dir $< \
+		--json_path $@
+
+
+
+
+calculate_all_tissue_proportions: \
+data/extras/ihc_slides/tissue_proportion_$(PATCHES_FROM_ROIS_DIR).json \
+data/extras/ihc_slides/tissue_proportion_$(ALL_PATCHES_DIR).json
 	echo 'hola'
