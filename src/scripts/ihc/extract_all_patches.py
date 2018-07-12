@@ -43,17 +43,24 @@ def main(excel_file, slides_dir, patches_dir,
         las regiones (x5, x10, x20, x40).
     """
     slides_ids, slides_labels = excel.get_valid_slides_ids(excel_file)
+    scale_map = {"x40": 1, "x20": 0.5, "x10": 0.25, "x5": 0.125}
+
     for slide_id, slide_label in zip(slides_ids, slides_labels):
         ndpi_path = os.path.join(slides_dir, slide_id + ".ndpi")
         print(ndpi_path)
         slide = openslide.OpenSlide(ndpi_path)
+
         width_l0 = int(slide.properties['openslide.level[0].width'])
         height_l0 = int(slide.properties['openslide.level[0].height'])
+        width_slide = int(width_l0 * scale_map[magnification])
+        height_slide = int(height_l0 * scale_map[magnification])
+
         current_dst_dir = os.path.join(patches_dir, slide_label)
         os.makedirs(current_dst_dir, exist_ok=True)
-        for row in range(0, height_l0 - (height_l0 % patches_height),
+
+        for row in range(0, height_slide - (height_slide % patches_height),
                          patches_height):
-            for column in range(0, width_l0 - (width_l0 % patches_width),
+            for column in range(0, width_slide - (width_slide % patches_width),
                                 patches_width):
                 row_column = "x{column}_y{row}".format(row=row, column=column)
                 ndpisplit_wrapper.extract_region(ndpi_path, column, row,
@@ -88,7 +95,7 @@ if __name__ == "__main__":
         '--patches_dir',
         type=str,
         help="""\
-        Directorio donde se guardarán los parches extraídos desde los ROIs. 
+        Directorio donde se guardarán los parches extraídos desde los slides. 
         En caso de no entregar un valor, los parches serán guardado en la
         carpeta data/processed/ihc_all_patches_x40 .\
         """,
