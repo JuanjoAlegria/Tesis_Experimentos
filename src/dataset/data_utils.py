@@ -71,12 +71,12 @@ def get_filenames_and_labels(data_dir, partition=FULL_DATASET,
         útil para depuración.
 
     Returns:
-        - filenames: list[str]. Lista con los nombres de los archivos en
-        formato label/filename.jpg. Notar que, en este caso, label corresponde
-        a la etiqueta sin transformar (e.g, acá label si puede ser setosa o
-        versicolor).
-        - labels: list[int]. Lista con las etiquetas correspondientes
-        convertidas a enteros. Correlativo con filenames.
+        - filenames: np.array(str). Arreglo de numpy con los nombres de los
+        archivos en formato label/filename.jpg. Notar que, en este caso, label
+        corresponde a la etiqueta sin transformar (e.g, acá label si puede ser
+        setosa o versicolor).
+        - labels: np.array(str). Arreglo de numpy con las etiquetas
+        correspondientes convertidas a enteros. Correlativo con filenames.
         - labels_map: dict[str: int]. Diccionario con el mapeo entre etiquetas
         originales y etiquetas numéricas.
 
@@ -162,24 +162,27 @@ def generate_validation_set(train_filenames, train_labels, percentage):
     """ Crea un conjunto de validación a partir del conjunto de entrenamiento.
 
     Args:
-        - train_filenames: list[str]. Lista con los nombres de los archivos
-        que son parte del conjunto de entramiento.
-        - train_labels: list[int]. Lista con etiquetas numéricas, correlativas
-        a train_filenames.
+        - train_filenames: np.array(). Arreglo de numpy con los nombres de los
+        archivos que son parte del conjunto de entramiento.
+        - train_labels: np.array(). Arreglo de numpy con etiquetas numéricas,
+        correlativas a train_filenames.
         - percentage: int, 0 < percentage <= 100. Porcentaje del
         conjunto de entrenamiento que debe usarse para contruir el conjunto de
         validación.
     Returns:
         (train_filenames, train_labels), (val_filenames, val_labels)
         Dos tuplas, una para el conjunto de entrenamiento y otra para el de
-        validación. Cada tupla tiene dos elementos: el primer elemento es una
-        lista de nombres de archivo y el segundo elemento es una lista con las
-        etiquetas.
+        validación. Cada tupla tiene dos elementos: el primer elemento es un
+        arrego de numpy con nombres de archivo y el segundo elemento es un
+        arrego de numpy con las etiquetas.
     """
     if percentage <= 0 or percentage > 100:
         error_msg = "percentage debe estar entre 0 y 100" + \
             " y el valor entregado fue {value}".format(value=percentage)
         raise ValueError(error_msg)
+
+    import pdb
+    pdb.set_trace()  # breakpoint b47227ba //
 
     n_files = int(len(train_filenames) * (percentage / 100))
     permutation = np.random.permutation(len(train_filenames))
@@ -312,7 +315,7 @@ def generate_uneven_partition(some_list, n_partitions):
 
 
 def generate_kfold(negative_slides, equivocal_slides, positive_slides,
-                   n_folds, train_dir, test_dir):
+                   n_folds, train_dir, test_dir, datasets_dst_dir):
 
     import pdb
     pdb.set_trace()  # breakpoint c6027473 //
@@ -344,6 +347,10 @@ def generate_kfold(negative_slides, equivocal_slides, positive_slides,
         fname.split("/")[1].split("_")[0] in ids
 
     for idx in range(n_folds):
+
+        fold_dataset_path = os.path.join(
+            datasets_dst_dir, "dataset_dict_fold_{}.json".format(idx + 1))
+
         test_ids = negative_part[idx] + equivocal_part[idx] + \
             positive_part[idx]
 
@@ -353,16 +360,27 @@ def generate_kfold(negative_slides, equivocal_slides, positive_slides,
 
         train_ids = list(itertools.chain.from_iterable(train_ids))
 
-        train_fold = filter(lambda fname, label:
-                            filter_fn(fname, label, train_ids),
+        train_fold = filter(lambda item:
+                            filter_fn(item[0], item[1], train_ids),
                             train_data)
-        test_fold = filter(lambda fname, label:
-                           filter_fn(fname, label, test_ids),
+        test_fold = filter(lambda item:
+                           filter_fn(item[0], item[1], test_ids),
                            test_data)
 
         train_fold_fnames, train_fold_labels = zip(*train_fold)
+        train_fold_fnames = np.array(train_fold_fnames)
+        train_fold_labels = np.array(train_fold_labels)
+
         test_fold_fnames, test_fold_labels = zip(*test_fold)
+        test_fold_fnames = np.array(test_fold_fnames)
+        test_fold_labels = np.array(test_fold_labels)
 
         (train_fold_fnames, train_fold_labels), \
             (val_fold_fnames, val_fold_labels) = generate_validation_set(
                 train_fold_fnames, train_fold_labels, 80)
+
+        dump_dataset(fold_dataset_path, train_fold_fnames, train_fold_labels,
+                     val_fold_fnames, val_fold_labels,
+                     test_fold_fnames, test_fold_labels)
+
+        check_integrity_dumped_dataset(fold_dataset_path, labels_map)
