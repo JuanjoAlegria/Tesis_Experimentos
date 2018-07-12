@@ -181,9 +181,6 @@ def generate_validation_set(train_filenames, train_labels, percentage):
             " y el valor entregado fue {value}".format(value=percentage)
         raise ValueError(error_msg)
 
-    import pdb
-    pdb.set_trace()  # breakpoint b47227ba //
-
     n_files = int(len(train_filenames) * (percentage / 100))
     permutation = np.random.permutation(len(train_filenames))
 
@@ -265,6 +262,10 @@ def check_integrity_dumped_dataset(dataset_path, labels_map):
         numéricos en el rango [0, n_classes - 1]. Si es que no se entrega un
         label_map, no se realiza la verificación de que cada filename esté
         asociado a su etiqueta correcta.
+
+    Raises:
+        AssertionError, si es que alguna de las condiciones de integridad no
+        se cumple.
     """
     with open(dataset_path) as file:
         dataset_json = json.load(file)
@@ -314,12 +315,79 @@ def generate_uneven_partition(some_list, n_partitions):
     return [some_list[idx::n_partitions] for idx in range(n_partitions)]
 
 
-def generate_kfold(negative_slides, equivocal_slides, positive_slides,
-                   n_folds, train_dir, test_dir, datasets_dst_dir):
+def generate_kfold(n_folds, negative_slides, equivocal_slides, positive_slides,
+                   train_dir, test_dir, datasets_dst_dir,
+                   train_proportions, test_proportions,
+                   proportion_threshold=0.1):
+    """Genera k particiones de datos, cada una subdivida en conjuntos de
+    entrenamiento, validación y prueba.
 
-    import pdb
-    pdb.set_trace()  # breakpoint c6027473 //
+    El algoritmo funciona así: existen dos fuentes de datos (imágenes), una con
+    parches extraídos directamente desde los ROIs marcados por los patólogos,
+    y otra con todos los parches extraídos desde las slides. Por ello, los
+    parches sacados desde las ROIs serán usados para entrenar y evaluar la red
+    neuronal, mientras que los otros parches (los que fueron sacados
+    directamente de las slides) serán entregados a la red, para que esta los
+    clasifique de forma individual y así luego poder agregar estos resultados
+    y clasificar la biopsia completa.
 
+    Además, para generar las particiones se "aisla" un conjunto de biopsias; de
+    esta forma, se entrena y valida con parches extraidos de los ROIs de un
+    grupo de biopsias, y se predice en parches extraídos de otro grupo de
+    slides. Obviamente, se busca que los conjuntos sean balanceados, con
+    cantidades similares de slides negativas (0+ o 1+), equívocas (2+) y
+    positivas (3+).
+
+    Finalmente, también se buscará que los datasets generados contengan
+    imágenes útiles; es decir, que al menos una porción de la imagen
+    corresponda a tejido. El umbral para decidir utilidad (proporción mínima
+    de la imagen que debe tener tejido) es otro parámetro de la función.
+
+    Args:
+        - n_folds: int. Número de particiones que se desea generar.
+        - negative_slides: list[str], ids de las slides negativas
+        (clasificación HER2 0+ o 1+)
+        - equivocal_slides: list[str], ids de las slides equívocas
+        (clasificación HER2 2+)
+        - positive_slides: list[str], ids de las slides positivas
+        (clasificación HER2 3+)
+        - train_dir: str. Directorio con imágenes de entrenamiento (aquellas
+        extraídas de los ROIs)
+        - test_dir: str. Directorio con imágenes de prueba (aquellas
+        extraídas indistintamente de las slides)
+        - datasets_dst_dir: str. Directorio donde se guardarán los distintos
+        archivos json con los datasets creados.
+        - train_proportions: dict[str -> float]. Diccionario que tiene como
+        llaves los nombres de las imágenes de entrenamiento, y como valores
+        asociados la proporción de tejido correspondiente a cada imagen.
+        - test_proportions: dict[str -> float]. Diccionario que tiene como
+        llaves los nombres de las imágenes de prueba, y como valores
+        asociados la proporción de tejido correspondiente a cada imagen.
+        - proportion_threshold: float. Proporción mínima de tejido que debe
+        tener una imagen para ser considerada en el dataset final.
+
+
+    """
+
+    def should_keep_patch(label_and_name, valid_ids, proportions_dict):
+        """Determina si un parche debe ser mantenido en la base de datos, en
+        base a la slide de la cual proviene y la proporción de tejido en la
+        imagen.
+
+        Args:
+            - label_and_name: str. Etiqueta y nombre del parche en formato
+            label/{slide_id}_rest.jpg
+            - valid_ids: list[str]. Lista con ids de slides válidas.
+            - proportions_dict: dict[str -> float]. Diccionario que tiene como
+            llaves los nombres de las imágenes, y como valores
+            asociados la proporción de tejido correspondiente a cada imagen.
+        """
+        slide_id = label_and_name.split("/")[1].split("_")[0]
+        proportion = proportions_dict[label_and_name]
+        return slide_id in valid_ids and proportion > proportion_threshold
+
+    print(n_folds)
+    os.makedirs(datasets_dst_dir, exist_ok=True)
     if n_folds == -1:
         n_folds = min(len(negative_slides), len(
             equivocal_slides), len(positive_slides))
@@ -327,46 +395,58 @@ def generate_kfold(negative_slides, equivocal_slides, positive_slides,
     # Se unen las clases 0 y 1 (ambas son negativas)
     labels_map = {'0': 1, '1': 1, '2': 2, '3': 3}
 
+    # Obtenemos los nombres de las imágenes del conjunto de entrenamiento
     train_fname, train_labels, _ = get_filenames_and_labels(
         train_dir, labels_map=labels_map)
+    # Y del conjunto de prueba
     test_fname, test_labels, _ = get_filenames_and_labels(
         test_dir, labels_map=labels_map)
 
-    train_data = zip(train_fname, train_labels)
-    test_data = zip(test_fname, test_labels)
+    # Zipeamos, para posteriormente hacer más fácil el filtrado
+    train_data = list(zip(train_fname, train_labels))
+    test_data = list(zip(test_fname, test_labels))
 
+    # Aleatorizamos los conjuntos de ids
     negative_slides = np.random.permutation(negative_slides).tolist()
     equivocal_slides = np.random.permutation(equivocal_slides).tolist()
     positive_slides = np.random.permutation(positive_slides).tolist()
 
+    # Generamos particiones en los conjuntos de ids (k-fold)
     negative_part = generate_uneven_partition(negative_slides, n_folds)
     equivocal_part = generate_uneven_partition(equivocal_slides, n_folds)
     positive_part = generate_uneven_partition(positive_slides, n_folds)
 
-    filter_fn = lambda fname, label, ids: \
-        fname.split("/")[1].split("_")[0] in ids
-
     for idx in range(n_folds):
-
+        # Nombre del archivo json donde se guardarán los datos
         fold_dataset_path = os.path.join(
             datasets_dst_dir, "dataset_dict_fold_{}.json".format(idx + 1))
 
+        # Slides de prueba para esta iteración
         test_ids = negative_part[idx] + equivocal_part[idx] + \
             positive_part[idx]
 
+        # Slides de entrenamiento para esta iteración
         train_ids = negative_part[:idx] + negative_part[idx + 1:] + \
             equivocal_part[:idx] + equivocal_part[idx + 1:] + \
             positive_part[:idx] + positive_part[idx + 1:]
 
+        # Aplanamos train_ids, porque en este momento es una lista de listas
         train_ids = list(itertools.chain.from_iterable(train_ids))
 
-        train_fold = filter(lambda item:
-                            filter_fn(item[0], item[1], train_ids),
-                            train_data)
-        test_fold = filter(lambda item:
-                           filter_fn(item[0], item[1], test_ids),
-                           test_data)
+        print("TRAIN", train_ids)
+        print("TEST", test_ids)
+        # Filtramos las imágenes correspondientes al conjunto de entrenamiento
+        train_fold = list(filter(
+            lambda item: should_keep_patch(item[0], train_ids,
+                                           train_proportions),
+            train_data))
+        # Filtramos las imágenes correspondientes al conjunto de prueba
+        test_fold = list(filter(
+            lambda item: should_keep_patch(item[0], test_ids,
+                                           test_proportions),
+            test_data))
 
+        # Unzip, recuperamos nombres y etiquetas por separado
         train_fold_fnames, train_fold_labels = zip(*train_fold)
         train_fold_fnames = np.array(train_fold_fnames)
         train_fold_labels = np.array(train_fold_labels)
@@ -375,12 +455,16 @@ def generate_kfold(negative_slides, equivocal_slides, positive_slides,
         test_fold_fnames = np.array(test_fold_fnames)
         test_fold_labels = np.array(test_fold_labels)
 
+        # Generamos conjunto de validación desde el conjunto de prueba
         (train_fold_fnames, train_fold_labels), \
             (val_fold_fnames, val_fold_labels) = generate_validation_set(
-                train_fold_fnames, train_fold_labels, 80)
+                train_fold_fnames, train_fold_labels, 20)
 
-        dump_dataset(fold_dataset_path, train_fold_fnames, train_fold_labels,
-                     val_fold_fnames, val_fold_labels,
-                     test_fold_fnames, test_fold_labels)
+        # Guardamos el dataset en disco
+        dump_dataset(fold_dataset_path, train_fold_fnames.tolist(),
+                     train_fold_labels.tolist(), val_fold_fnames.tolist(),
+                     val_fold_labels.tolist(), test_fold_fnames.tolist(),
+                     test_fold_labels.tolist())
 
+        # Revisamos la integridad del dataset generado
         check_integrity_dumped_dataset(fold_dataset_path, labels_map)
