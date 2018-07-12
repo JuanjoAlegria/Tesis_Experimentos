@@ -42,10 +42,13 @@ def main(patches_dir, json_path):
         print(subdir_full)
         with concurrent.futures.ProcessPoolExecutor() as executor:
             filenames = glob.glob(os.path.join(subdir_full, "*.jpg"))
-            for image_name, tissue_proportion in zip(
+            for whole_image_name, tissue_proportion in zip(
                 filenames, executor.map(get_tissue_proportion_from_path,
                                         filenames)):
-                proportions[image_name] = tissue_proportion
+                head, image_name = os.path.split(whole_image_name)
+                _, label = os.path.split(head)
+                label_and_name = os.path.join(label, image_name)
+                proportions[label_and_name] = tissue_proportion
 
     with open(json_path, "w") as json_file:
         json.dump(proportions, json_file)
