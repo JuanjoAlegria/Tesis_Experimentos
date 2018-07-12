@@ -12,8 +12,8 @@ negative = ids[np.where((labels == '0') | (labels == '1'))]
 equivocal = ids[np.where(labels == '2')]
 positive = ids[np.where(labels == '3')]
 
-train_dir = "/home/juanjo/U/2017/Tesis/Experimentos/data/processed/ihc_patches_x40/"
-test_dir = "/home/juanjo/U/2017/Tesis/Experimentos/data/processed/ihc_all_patches_x40/"
+train_dir = "/home/juanjo/U/2017/Tesis/Experimentos/data/processed/ihc_patches_from_rois_x40/"
+test_dir = "/home/juanjo/U/2017/Tesis/Experimentos/data/processed/ihc_all_patches_x5/"
 
 data_utils.generate_kfold(negative, equivocal, positive,
                           5, train_dir, test_dir)
