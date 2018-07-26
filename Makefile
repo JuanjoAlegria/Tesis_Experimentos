@@ -22,7 +22,9 @@ test_experiment: data/partitions_json/mnist/dataset_dict.json
 ifeq ($(ENV), cpu)
 	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
 		--experiment_name $(TEST_EXPERIMENT_NAME) \
-		--images_dir data/raw/mnist \
+		--train_images_dir data/raw/mnist \
+		--validation_images_dir data/raw/mnist \
+		--test_images_dir data/raw/mnist \
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
 		--num_epochs 20 \
