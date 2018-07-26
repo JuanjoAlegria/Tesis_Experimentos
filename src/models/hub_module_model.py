@@ -126,6 +126,8 @@ def hub_bottleneck_model_fn(features, labels, mode, params):
             - bottlenecks_dir: string, opcional pero requerido si es que
             cache_bottlenecks es True. Directorio donde se almacenarán los
             bottlenecks.
+            - fine_tuning: bool. Indica si es que se desea realizar fine tuning
+            en la red.
 
     Returns:
         - tf.estimator.EstimatorSpec, la configuración dependerá del valor de

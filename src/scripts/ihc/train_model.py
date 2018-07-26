@@ -30,7 +30,6 @@ def main(flags):
     print("Entrenando")
     experiment.train_and_evaluate(train_filenames, train_labels,
                                   validation_filenames, validation_labels)
-    # experiment.train(train_filenames, train_labels)
     print("Evaluando con el conjunto de validación")
     experiment.test_and_predict(
         validation_filenames, validation_labels, "validation")
