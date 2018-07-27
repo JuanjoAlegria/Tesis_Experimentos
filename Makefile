@@ -1,4 +1,4 @@
-ENV = cpu
+ENV = gpu
 PYTHON_BIN = python3
 RANDOM_SEED = 1234
 MODEL_NAME = inception_v3
@@ -126,7 +126,9 @@ clear_patches_experiment:
 patches_experiment: data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json
 	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
 		--experiment_name $(PATCHES_FROM_ROIS_DIR)_experiment \
-		--images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--train_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--validation_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--test_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
 		--num_epochs $(NUM_EPOCHS) \
@@ -139,7 +141,9 @@ patches_random_experiment: \
 data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json
 	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
 		--experiment_name $(PATCHES_FROM_ROIS_DIR)_random_experiment \
-		--images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--train_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--validation_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--test_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
 		--num_epochs $(NUM_EPOCHS) \
@@ -156,7 +160,9 @@ patches_fine_tuning_experiment: \
 data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json
 	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
 		--experiment_name $(PATCHES_FROM_ROIS_DIR)_fine_tuning_experiment \
-		--images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--train_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--validation_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--test_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
 		--num_epochs $(NUM_EPOCHS) \
@@ -170,7 +176,9 @@ patches_random_fine_tuning_experiment: \
 data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json
 	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
 		--experiment_name $(PATCHES_FROM_ROIS_DIR)_random_fine_tuning_experiment \
-		--images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--train_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--validation_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--test_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
 		--num_epochs $(NUM_EPOCHS) \
