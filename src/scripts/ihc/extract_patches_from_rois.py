@@ -26,8 +26,7 @@ def get_info_from_roi_name(roi_name):
 
 
 def main(excel_file, rois_dir, patches_dir, valid_owners,
-         patches_height, patches_width, stride_rows, stride_columns,
-         threshold_gray_pixels):
+         patches_height, patches_width, stride_rows, stride_columns):
     """Extrae parches desde ROIs almacenados en rois_dir, utilizando la
     información contenida en excel_file. Luego, guarda los parches en
     patches_dir, en un subdirectorio correspondiente a su clase (0,1,2,3).
@@ -78,8 +77,6 @@ def main(excel_file, rois_dir, patches_dir, valid_owners,
         patches = image.extract_patches(roi_path, patches_height,
                                         patches_width, stride_rows,
                                         stride_columns)
-        patches = {name: patch for name, patch in patches.items()
-                   if image.is_useful_patch(patch, threshold_gray_pixels)}
         image.save_patches(patches, roi_name, current_dst_dir)
         print(roi_name, len(patches), label)
         n_rois += 1
@@ -161,19 +158,9 @@ if __name__ == "__main__":
         """,
         default=50
     )
-    PARSER.add_argument(
-        '--threshold_gray_pixels',
-        type=float,
-        help="""\
-        Proporción máxima de pixeles grises soportada. Debe ser un valor entre
-        0 y 1.\
-        """,
-        default=0.8
-    )
 
     FLAGS = PARSER.parse_args()
     main(FLAGS.excel_file, FLAGS.rois_dir,
          FLAGS.patches_dir, FLAGS.valid_owners,
          FLAGS.patches_height, FLAGS.patches_width,
-         FLAGS.stride_rows, FLAGS.stride_columns,
-         FLAGS.threshold_gray_pixels)
+         FLAGS.stride_rows, FLAGS.stride_columns)
