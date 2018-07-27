@@ -41,13 +41,13 @@ else
 		--test_images_dir data/raw/mnist \
 		--random_seed $(RANDOM_SEED) \
 		--dataset_json $< \
-		--num_epochs 1000 \
+		--num_epochs 100 \
 		--model_name $(MODEL_NAME) \
 		--remove_prev_ckpts_and_logs \
 		--tensors_to_log_train global_step loss \
 		--save_checkpoints_steps 50 \
 		--eval_frequency 50 \
-		--fine_tuning
+		# --fine_tuning
 endif
 
 clear_test:
