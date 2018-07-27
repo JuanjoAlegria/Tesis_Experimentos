@@ -39,6 +39,7 @@ def main(images_dir, dataset_path, test_percentage,
     filenames, labels, \
         labels_map = data_utils.get_filenames_and_labels(images_dir)
 
+    print("Cantidad previa de arhivos:", len(filenames))
     if minimum_tissue_proportion > 0:
         with open(proportions_json) as file:
             proportions_dict = json.load(file)
@@ -50,7 +51,7 @@ def main(images_dir, dataset_path, test_percentage,
                 labels_tmp.append(label)
         filenames = np.array(filenames_tmp)
         labels = np.array(labels_tmp)
-
+    print("Cantidad final de arhivos:", len(filenames))
     datasets = data_utils.generate_partition(filenames, labels, percentages)
     train_filenames, train_labels = datasets[0]
     validation_filenames, validation_labels = datasets[1]
