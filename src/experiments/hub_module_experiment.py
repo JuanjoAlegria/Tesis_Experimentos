@@ -16,7 +16,6 @@ class HubModelExperiment:
     genéricas del módulo dataset.
 """
 
-import re
 import os
 import glob
 import json
@@ -534,9 +533,6 @@ class HubModelExperiment:
         with open(config_file_path, "w") as config_json:
             json.dump(flags_as_dict, config_json)
 
-    def __load_best_model(self):
-        ckpt_path = self.__get_best_ckpt_path()
-
     def __get_best_ckpt_path(self):
         """Obtiene la ubicación del mejor checkpoint guardado.
 
@@ -551,7 +547,7 @@ class HubModelExperiment:
         checkpoint_path = os.path.splitext(files_best_ckpt[0])[0]
         return checkpoint_path
 
-    def __build_estimator(self, mode="train", export=False, best_ckpt=False):
+    def __build_estimator(self, mode="train"):
         """Construye un tf.Estimator basado en hub_module_estimator.
 
         Args:
@@ -567,24 +563,23 @@ class HubModelExperiment:
             tf.Estimator, con model_fn igual a hub_module_estimator_model_fn.
         """
 
-        if best_ckpt:
-            checkpoint_path = self.__get_best_ckpt_path()
-        else:
-            checkpoint_path = None
+        # if export:
+        #     cache_bottlenecks = False
+        #     bottlenecks_dir = ""
+        # else:
 
-        if export:
-            cache_bottlenecks = False
+        cache_bottlenecks = self.cache_bottlenecks
+        if mode == "train":
+            bottlenecks_dir = self.train_bottlenecks_dir
+        elif mode == "validation":
+            bottlenecks_dir = self.validation_bottlenecks_dir
+        elif mode == "test":
+            bottlenecks_dir = self.test_bottlenecks_dir
+        elif mode == "export":
             bottlenecks_dir = ""
+            cache_bottlenecks = False
         else:
-            cache_bottlenecks = self.cache_bottlenecks
-            if mode == "train":
-                bottlenecks_dir = self.train_bottlenecks_dir
-            elif mode == "validation":
-                bottlenecks_dir = self.validation_bottlenecks_dir
-            elif mode == "test":
-                bottlenecks_dir = self.test_bottlenecks_dir
-            else:
-                raise ValueError("mode debe ser train, validation o test")
+            raise ValueError("mode debe ser train, validation o test")
 
         params = {"module_spec": self.module_spec,
                   "model_name": self.model_name,
@@ -602,106 +597,9 @@ class HubModelExperiment:
                 save_checkpoints_steps=self.save_checkpoints_steps,
                 keep_checkpoint_max=20,
                 save_summary_steps=2),
-            params=params,
-            warm_start_from=checkpoint_path)
+            params=params)
 
         return classifier
-
-    # def __train_input_fn(self, train_filenames, train_labels):
-    #     """Construye un dataset para ser utilizado como input_fn en la fase de
-    #     entrenamiento.
-
-    #     La principal diferencia con __eval_input_fn es que aquí si importan las
-    #     distorsiones aleatorias, las cuales no son utilizadas en el modo de
-    #     evaluación.
-
-    #     Args:
-    #         - train_filenames: [str]. Nombres de los archivos que serán
-    #         utilizados en el entrenamiento. Su formato es
-    #         label_original/filename.jpg, y la ubicación es relativa a
-    #         self.images_dir.
-    #         - train_labels: [int]. Etiquetas numéricas con las cuales se
-    #         realizará el entrenamiento.
-
-    #     Returns:
-    #         tf.data.Dataset, con mapeo de filenames a imágenes y distorsiones
-    #         aleatorias en caso de ser requeridas. Además, se le aplican las
-    #         operaciones shuffle, repeat y batch.
-    #     """
-    #     return tf_data_utils.create_images_dataset(
-    #         train_filenames,
-    #         train_labels,
-    #         image_shape=self.module_image_shape,
-    #         image_depth=self.module_image_depth,
-    #         src_dir=self.train_images_dir,
-    #         shuffle=True,
-    #         num_epochs=self.num_epochs,
-    #         batch_size=self.train_batch_size,
-    #         flip_left_right=self.flip_left_right,
-    #         random_crop=self.random_crop,
-    #         random_scale=self.random_scale,
-    #         random_brightness=self.random_brightness)
-
-    # def __test_input_fn(self, test_filenames, test_labels):
-    #     """Construye un dataset para ser utilizado como input_fn en la fase de
-    #     pruebas.
-
-    #     La principal diferencia con __train_input_fn es que aquí no importan
-    #     las distorsiones aleatorias, las cuales sí son utilizadas en el modo de
-    #     entrenamiento. Además, esta función es para el modo de prueba posterior
-    #     al entrenamiento; es decir, se utiliza el conjunto de prueba. Por
-    #     ello, num_epochs = 1, y no se permuta aleatoriamente el dataset.
-    #     Además, batch_size = 100 (por ahora).
-
-    #     Args:
-    #         - test_filenames: [str]. Nombres de los archivos que serán
-    #         utilizados en la validación. Su formato es
-    #         label_original/filename.jpg, y la ubicación es relativa a
-    #         self.images_dir.
-    #         - test_labels: [int]. Etiquetas numéricas con las cuales se
-    #         realizará la validación.
-
-    #     Returns:
-    #         tf.data.Dataset, con mapeo de filenames a imágenes. Además, se
-    #         aplican las operaciones shuffle, repeat y batch.
-    #     """
-
-    #     return tf_data_utils.create_images_dataset(
-    #         test_filenames, test_labels, image_shape=self.module_image_shape,
-    #         image_depth=self.module_image_depth,
-    #         src_dir=self.train_images_dir, shuffle=False, num_epochs=1,
-    #         batch_size=self.test_batch_size)
-
-    # def __validation_input_fn(self, validation_filenames, validation_labels):
-    #     """Construye un dataset para ser utilizado como input_fn en la fase de
-    #     pruebas.
-
-    #     La principal diferencia con __train_input_fn es que aquí no importan
-    #     las distorsiones aleatorias, las cuales sí son utilizadas en el modo de
-    #     entrenamiento. Además, esta función es para el modo de validación
-    #     durante el entrenamiento; es decir, se utiliza el conjunto de prueba.
-    #     Por  ello, num_epochs = 1, y no se permuta aleatoriamente el dataset.
-    #     Además, batch_size = 100 (por ahora).
-
-    #     Args:
-    #         - validation_filenames: [str]. Nombres de los archivos que serán
-    #         utilizados en la validación. Su formato es
-    #         label_original/filename.jpg, y la ubicación es relativa a
-    #         self.images_dir.
-    #         - validation_labels: [int]. Etiquetas numéricas con las cuales se
-    #         realizará la validación.
-
-    #     Returns:
-    #         tf.data.Dataset, con mapeo de filenames a imágenes. Además, se
-    #         aplican las operaciones shuffle, repeat y batch.
-    #     """
-
-    #     return tf_data_utils.create_images_dataset(
-    #         validation_filenames, validation_labels,
-    #         image_shape=self.module_image_shape,
-    #         image_depth=self.module_image_depth,
-    #         src_dir=self.train_images_dir, shuffle=True, num_epochs=1,
-    #         batch_size=self.validation_batch_size)
 
     def __input_fn(self, filenames, labels, mode):
         """Construye un dataset para ser utilizado como input_fn, con distintas
@@ -843,7 +741,7 @@ class HubModelExperiment:
         """Evalúa el tf.Estimator
 
         Primero construye la input_fn con que se alimentará el modelo, y luego
-        lo evalúa.
+        lo evalúa, utilizando el mejor checkpoint guardado.
 
         Args:
             - filenames: [str]. Nombres de los archivos que serán
@@ -857,12 +755,15 @@ class HubModelExperiment:
         test_input_fn = lambda: self.__input_fn(
             filenames, labels, partition_name)
 
-        self.estimator = self.__build_estimator(
-            mode="test", best_ckpt=True)
-        eval_results = self.estimator.evaluate(input_fn=test_input_fn)
+        self.estimator = self.__build_estimator(partition_name)
+        eval_results = self.estimator.evaluate(
+            input_fn=test_input_fn,
+            checkpoint_path=self.__get_best_ckpt_path())
         print(eval_results)
 
-        predictions = self.estimator.predict(input_fn=test_input_fn)
+        predictions = self.estimator.predict(
+            input_fn=test_input_fn,
+            checkpoint_path=self.__get_best_ckpt_path())
         header = "Filename / Real Class / Predicted Class\n"
         lines = [header]
         for index, pred in enumerate(predictions):
@@ -933,8 +834,7 @@ class HubModelExperiment:
         """Exporta el grafo como un SavedModel estándar para ser utilizado
         posteriormente
         """
-        estimator_for_export = self.__build_estimator(
-            export=True, best_ckpt=True)
+        estimator_for_export = self.__build_estimator(mode="export")
         estimator_for_export.export_savedmodel(
             self.export_model_dir, self.__serving_input_receiver_fn,
-            as_text=True)
+            checkpoint_path=self.__get_best_ckpt_path(), as_text=True)
