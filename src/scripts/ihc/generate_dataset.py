@@ -106,7 +106,7 @@ if __name__ == "__main__":
         help='Semilla aleatoria (útil para obteer resultados reproducibles).'
     )
     PARSER.add_argument(
-        '--proportion_threshold',
+        '--minimum_tissue_proportion',
         type=float,
         help="""\
         Proporción mínima de tejido que debe tener una imagen para ser
