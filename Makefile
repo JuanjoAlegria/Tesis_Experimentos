@@ -68,7 +68,7 @@ FINE_TUNING = True
 SLIDES_DIR = ihc_slides
 ROIS_DIR = ihc_rois_$(MAGNIFICATION)
 PATCHES_FROM_ROIS_DIR = ihc_patches_from_rois_$(MAGNIFICATION)
-
+MINIMUM_TISSUE_PROPORTION = 0.1
 PATCHES_HEIGHT = 300
 PATCHES_WIDTH = 300
 
@@ -104,17 +104,25 @@ data/processed/$(PATCHES_FROM_ROIS_DIR): data/interim/$(ROIS_DIR)
 		--patches_width $(PATCHES_WIDTH) \
 		--stride_rows 250 \
 		--stride_columns 250 \
-		--threshold_gray_pixels 0.9
+
+data/extras/ihc_slides/tissue_proportion_$(PATCHES_FROM_ROIS_DIR).json: \
+data/processed/$(PATCHES_FROM_ROIS_DIR)
+	$(PYTHON_BIN) -m src.scripts.ihc.calculate_tissue_proportion \
+		--patches_dir $< \
+		--json_path $@
 
 
 data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json: \
-data/processed/$(PATCHES_FROM_ROIS_DIR)
+data/processed/$(PATCHES_FROM_ROIS_DIR) \
+data/extras/ihc_slides/tissue_proportion_$(PATCHES_FROM_ROIS_DIR).json
 	$(PYTHON_BIN) -m src.scripts.ihc.generate_dataset \
 		--images_dir $< \
 		--dataset_path $@ \
 		--validation_percentage 10 \
 		--test_percentage 10 \
-		--random_seed $(RANDOM_SEED)
+		--random_seed $(RANDOM_SEED) \
+		--minimum_tissue_proportion $(MINIMUM_TISSUE_PROPORTION) \
+		--proportions_json $(word 2,$^) 
 
 clear_patches_experiment:
 	rm -r data/extras/$(SLIDES_DIR)/annotations  || true
@@ -123,7 +131,8 @@ clear_patches_experiment:
 	rm -r data/processed/$(PATCHES_FROM_ROIS_DIR) || true
 	rm -r data/partitions_json/$(PATCHES_FROM_ROIS_DIR) || true
 
-patches_experiment: data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json
+patches_experiment:  \
+data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json
 	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
 		--experiment_name $(PATCHES_FROM_ROIS_DIR)_experiment \
 		--train_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
@@ -211,12 +220,6 @@ data/processed/$(ALL_PATCHES_DIR):
 
 data/extras/ihc_slides/tissue_proportion_$(ALL_PATCHES_DIR).json: \
 data/processed/$(ALL_PATCHES_DIR)
-	$(PYTHON_BIN) -m src.scripts.ihc.calculate_tissue_proportion \
-		--patches_dir $< \
-		--json_path $@
-
-data/extras/ihc_slides/tissue_proportion_$(PATCHES_FROM_ROIS_DIR).json: \
-data/processed/$(PATCHES_FROM_ROIS_DIR)
 	$(PYTHON_BIN) -m src.scripts.ihc.calculate_tissue_proportion \
 		--patches_dir $< \
 		--json_path $@
