@@ -546,13 +546,9 @@ class HubModelExperiment:
         import pdb
         pdb.set_trace()  # breakpoint 9b073cd1 //
 
-        pattern_re = r"best_model.ckpt-(\d*).*"
-        pattern_name = "best_model.ckpt-{step}"
         files_best_ckpt = glob.glob(os.path.join(
             self.logs_and_checkpoints_dir, "best_model.ckpt*"))
-        best_step = re.match(pattern_re, files_best_ckpt[0]).group(1)
-        checkpoint_path = os.path.join(self.logs_and_checkpoints_dir,
-                                       pattern_name.format(step=best_step))
+        checkpoint_path = os.path.splitext(files_best_ckpt[0])[0]
         return checkpoint_path
 
     def __build_estimator(self, mode="train", export=False, best_ckpt=False):
