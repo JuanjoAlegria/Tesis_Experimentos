@@ -543,6 +543,9 @@ class HubModelExperiment:
         Returns:
             str, ubicación del mejor checkpoint.
         """
+        import pdb
+        pdb.set_trace()  # breakpoint 9b073cd1 //
+
         pattern_re = r"best_model.ckpt-(\d*).*"
         pattern_name = "best_model.ckpt-{step}"
         files_best_ckpt = glob.glob(os.path.join(
