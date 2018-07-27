@@ -48,8 +48,8 @@ def main(images_dir, dataset_path, test_percentage,
             if proportions_dict[filename] > minimum_tissue_proportion:
                 filenames_tmp.append(filename)
                 labels_tmp.append(label)
-        filenames = filenames_tmp
-        labels = labels_tmp
+        filenames = np.array(filenames_tmp)
+        labels = np.array(labels_tmp)
 
     datasets = data_utils.generate_partition(filenames, labels, percentages)
     train_filenames, train_labels = datasets[0]
