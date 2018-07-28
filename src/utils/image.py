@@ -20,7 +20,7 @@ def calculate_tissue_proportion(image):
         - image: np.array(), imagen con tres canales
 
     Returns:
-        float en el rango [0,1] que representa la proporción de tejido en la 
+        float en el rango [0,1] que representa la proporción de tejido en la
         imagen con respecto al total de pixeles en ésta.
     """
     lower = np.array([225, 225, 225])
