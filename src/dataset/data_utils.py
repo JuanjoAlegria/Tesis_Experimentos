@@ -319,7 +319,7 @@ def generate_kfold(n_folds, negative_slides, equivocal_slides, positive_slides,
                    train_dir, test_dir, datasets_dst_dir,
                    train_proportions, test_proportions,
                    proportion_threshold=0.1):
-    """Genera k particiones de datos, cada una subdivida en conjuntos de
+    """Genera k particiones de datos, cada una subdividida en conjuntos de
     entrenamiento, validación y prueba.
 
     El algoritmo funciona así: existen dos fuentes de datos (imágenes), una con
@@ -386,7 +386,6 @@ def generate_kfold(n_folds, negative_slides, equivocal_slides, positive_slides,
         proportion = proportions_dict[label_and_name]
         return slide_id in valid_ids and proportion > proportion_threshold
 
-    print(n_folds)
     os.makedirs(datasets_dst_dir, exist_ok=True)
     if n_folds == -1:
         n_folds = min(len(negative_slides), len(
