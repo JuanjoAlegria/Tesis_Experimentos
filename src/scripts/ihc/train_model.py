@@ -1,20 +1,13 @@
 """Script para entrenar un HubModuleModel, utilizando para ello la clase
 auxiliar HubModelExperiment.
 """
+import os
 import json
 import numpy as np
 from ...experiments import hub_module_experiment
 
 
-def main(flags):
-    """Función de entrada. Se obtienen los datasets desde dataset_json,
-    y se crea un HubModelExperiment, con el cual se entrena y evalúa el modelo,
-    para finalmente ser exportado.
-    """
-    np.random.seed(flags.random_seed)
-    with open(flags.dataset_json) as file:
-        dataset_json = json.load(file)
-
+def train_model_with_dataset(flags, dataset_json):
     print("Obteniendo dataset desde archivo json")
     train_filenames = np.array(dataset_json["train_features"])
     train_labels = np.array(dataset_json["train_labels"])
@@ -37,6 +30,37 @@ def main(flags):
     experiment.test_and_predict(test_filenames, test_labels, "test")
     print("Exportando")
     experiment.export_graph()
+
+
+def main(flags):
+    """Función de entrada. Se obtienen los datasets desde dataset_json,
+    y se crea un HubModelExperiment, con el cual se entrena y evalúa el modelo,
+    para finalmente ser exportado.
+    """
+
+    if os.path.isfile(flags.dataset_path):
+        np.random.seed(flags.random_seed)
+        with open(flags.dataset_path) as file:
+            dataset_json = json.load(file)
+        train_model_with_dataset(flags, dataset_json)
+
+    else:  # si es que flags.dataset_path es un directorio
+        base_experiment_name = flags.experiment_name
+        for dataset_file in os.listdir(flags.dataset_path):
+            name, ext = os.path.splitext(dataset_file)
+            if ext != ".json":
+                continue
+
+            np.random.seed(flags.random_seed)
+            # Obtenemos el índice del dataset
+            idx_dataset = name.split("_")
+            experiment_name = base_experiment_name + "_" + idx_dataset
+            flags.experiment_name = experiment_name
+            full_dataset_path = os.path.join(flags.dataset_path, dataset_file)
+            print("Dataset actual", dataset_file)
+            with open(full_dataset_path) as file:
+                dataset_json = json.load(file)
+            train_model_with_dataset(flags, dataset_json)
 
 if __name__ == "__main__":
     PARSER = hub_module_experiment.get_parser()
