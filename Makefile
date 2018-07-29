@@ -26,7 +26,7 @@ ifeq ($(ENV), cpu)
 		--validation_images_dir data/raw/mnist \
 		--test_images_dir data/raw/mnist \
 		--random_seed $(RANDOM_SEED) \
-		--dataset_json $< \
+		--dataset_path $< \
 		--num_epochs 20 \
 		--model_name $(MODEL_NAME) \
 		--remove_prev_ckpts_and_logs \
@@ -40,7 +40,7 @@ else
 		--validation_images_dir data/raw/mnist \
 		--test_images_dir data/raw/mnist \
 		--random_seed $(RANDOM_SEED) \
-		--dataset_json $< \
+		--dataset_path $< \
 		--num_epochs 100 \
 		--model_name $(MODEL_NAME) \
 		--remove_prev_ckpts_and_logs \
@@ -139,7 +139,7 @@ data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json
 		--validation_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--test_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--random_seed $(RANDOM_SEED) \
-		--dataset_json $< \
+		--dataset_path $< \
 		--num_epochs $(NUM_EPOCHS) \
 		--model_name $(MODEL_NAME) \
 		--tensors_to_log_train loss global_step \
@@ -154,7 +154,7 @@ data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json
 		--validation_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--test_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--random_seed $(RANDOM_SEED) \
-		--dataset_json $< \
+		--dataset_path $< \
 		--num_epochs $(NUM_EPOCHS) \
 		--model_name $(MODEL_NAME) \
 		--tensors_to_log_train loss global_step \
@@ -173,7 +173,7 @@ data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json
 		--validation_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--test_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--random_seed $(RANDOM_SEED) \
-		--dataset_json $< \
+		--dataset_path $< \
 		--num_epochs $(NUM_EPOCHS) \
 		--model_name $(MODEL_NAME) \
 		--tensors_to_log_train loss global_step \
@@ -189,7 +189,7 @@ data/partitions_json/$(PATCHES_FROM_ROIS_DIR)/dataset_dict.json
 		--validation_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--test_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--random_seed $(RANDOM_SEED) \
-		--dataset_json $< \
+		--dataset_path $< \
 		--num_epochs $(NUM_EPOCHS) \
 		--model_name $(MODEL_NAME) \
 		--tensors_to_log_train loss global_step \
