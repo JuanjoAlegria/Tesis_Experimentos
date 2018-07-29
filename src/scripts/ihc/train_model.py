@@ -53,7 +53,7 @@ def main(flags):
 
             np.random.seed(flags.random_seed)
             # Obtenemos el índice del dataset
-            idx_dataset = name.split("_")
+            idx_dataset = name.split("_")[-1]
             experiment_name = base_experiment_name + "_" + idx_dataset
             flags.experiment_name = experiment_name
             full_dataset_path = os.path.join(flags.dataset_path, dataset_file)
