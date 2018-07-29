@@ -432,8 +432,8 @@ def generate_kfold(n_folds, negative_slides, equivocal_slides, positive_slides,
         # Aplanamos train_ids, porque en este momento es una lista de listas
         train_ids = list(itertools.chain.from_iterable(train_ids))
 
-        print("TRAIN", train_ids)
-        print("TEST", test_ids)
+        print("Train ids: ", train_ids)
+        print("Test ids", test_ids)
         # Filtramos las imágenes correspondientes al conjunto de entrenamiento
         train_fold = list(filter(
             lambda item: should_keep_patch(item[0], train_ids,
