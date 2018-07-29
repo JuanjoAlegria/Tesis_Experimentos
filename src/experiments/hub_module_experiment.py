@@ -94,11 +94,15 @@ def get_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        '--dataset_json',
+        '--dataset_path',
         type=str,
         required=True,
         help="""\
-        Dataset en formato json, con las siguientes claves:
+        Ruta al dataset en formato json, o a un directorio con datasets en
+        formato json. Si se entrega un directorio, se ejecutará un experimento
+        con cada uno de los archivos allí presentes.
+
+        El dataset en formato json debe contener las siguientes claves:
         - train_filenames: list[str]. Conjunto de entrenamiento, donde cada
         elemento corresponde al nombre de un archivo en formato
         label_original/filename.jpg, relativo a train_images_dir.
