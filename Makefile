@@ -246,3 +246,18 @@ data/extras/ihc_slides/tissue_proportion_$(ALL_PATCHES_DIR).json
 generate_kfold_dataset: \
 data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold
 	echo 'listo'
+
+train_kfold: \
+data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold 
+	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
+		--experiment_name ihc_patches_kfold_$(MAGNIFICATION)_experiment \
+		--train_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--validation_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--test_images_dir data/processed/$(ALL_PATCHES_DIR) \
+		--random_seed $(RANDOM_SEED) \
+		--dataset_path $< \
+		--num_epochs $(NUM_EPOCHS) \
+		--model_name $(MODEL_NAME) \
+		--tensors_to_log_train loss global_step \
+		--save_checkpoints_steps 100 \
+		--eval_frequency 100
