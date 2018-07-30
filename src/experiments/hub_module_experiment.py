@@ -516,13 +516,17 @@ class HubModelExperiment:
         os.makedirs(self.results_dir, exist_ok=True)
 
         if self.cache_bottlenecks:
-            for b_dir in [self.train_bottlenecks_dir,
-                          self.validation_bottlenecks_dir,
-                          self.test_bottlenecks_dir]:
-                os.makedirs(b_dir, exist_ok=True)
-                for label_index in range(self.n_classes):
-                    os.makedirs(os.path.join(b_dir, str(label_index)),
-                                exist_ok=True)
+            pairs = [(self.train_images_dir,
+                      self.train_bottlenecks_dir),
+                     (self.validation_images_dir,
+                      self.validation_bottlenecks_dir),
+                     (self.test_images_dir,
+                      self.test_bottlenecks_dir)]
+            for images_dir, bnck_dir in pairs:
+                os.makedirs(bnck_dir, exist_ok=True)
+                original_labels = os.listdir(images_dir)
+                for label in original_labels:
+                    os.makedirs(os.path.join(bnck_dir, label), exist_ok=True)
 
     def __save_config_file(self, flags):
         """Guarda un archivo json en self.results_dir con la configuración
