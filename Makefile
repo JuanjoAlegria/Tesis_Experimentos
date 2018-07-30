@@ -258,6 +258,6 @@ data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold
 		--dataset_path $< \
 		--num_epochs $(NUM_EPOCHS) \
 		--model_name $(MODEL_NAME) \
-		--tensors_to_log_train loss global_step \
+		--tensors_to_log_train loss global_step filenames images \
 		--save_checkpoints_steps 100 \
 		--eval_frequency 100
