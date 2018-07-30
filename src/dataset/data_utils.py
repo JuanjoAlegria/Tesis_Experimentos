@@ -392,7 +392,7 @@ def generate_kfold(n_folds, negative_slides, equivocal_slides, positive_slides,
             equivocal_slides), len(positive_slides))
 
     # Se unen las clases 0 y 1 (ambas son negativas)
-    labels_map = {'0': 1, '1': 1, '2': 2, '3': 3}
+    labels_map = {'0': 0, '1': 0, '2': 1, '3': 2}
 
     # Obtenemos los nombres de las imágenes del conjunto de entrenamiento
     train_fname, train_labels, _ = get_filenames_and_labels(
