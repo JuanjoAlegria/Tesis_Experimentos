@@ -642,7 +642,7 @@ class HubModelExperiment:
 
         elif mode == "validation":
             src_dir = self.validation_images_dir
-            shuffle = True
+            shuffle = False
             num_epochs = 1
             batch_size = self.validation_batch_size
 
@@ -666,6 +666,7 @@ class HubModelExperiment:
             random_brightness=random_brightness)
 
     def __serving_input_receiver_fn(self):
+        # TODO: ARREGLAR ESTA FUNCIÓN
         """Construye una input_fn para ser utilizada al exportar el modelo.
 
         Returns:
@@ -840,6 +841,15 @@ class HubModelExperiment:
         posteriormente
         """
         estimator_for_export = self.__build_estimator(mode="export")
+        feature_inputs = {
+            "image": tf.placeholder(dtype=tf.float32,
+                                    shape=[self.module_image_shape[0],
+                                           self.module_image_shape[1],
+                                           self.module_image_depth],
+                                    name='input_image_tensor'),
+        }
+        serving_input_receiver_fn = tf.estimator.export.build_raw_serving_input_receiver_fn(
+            feature_inputs)
         estimator_for_export.export_savedmodel(
-            self.export_model_dir, self.__serving_input_receiver_fn,
+            self.export_model_dir, serving_input_receiver_fn,
             checkpoint_path=self.__get_best_ckpt_path(), as_text=True)
