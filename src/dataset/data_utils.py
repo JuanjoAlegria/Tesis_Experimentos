@@ -315,10 +315,59 @@ def generate_uneven_partition(some_list, n_partitions):
     return [some_list[idx::n_partitions] for idx in range(n_partitions)]
 
 
-def generate_kfold(n_folds, negative_slides, equivocal_slides, positive_slides,
-                   train_dir, test_dir, datasets_dst_dir,
-                   train_proportions, test_proportions,
-                   proportion_threshold=0.1):
+def generate_partitions_slide_ids(n_folds, negative_slides,
+                                  equivocal_slides, positive_slides):
+    """Genera n_folds particiones aproximadamente balanceadas a partir de
+    negative_slides, equivocal_slides, positive_slides.
+
+    Por ejemplo, si:
+        negative_slides = [0, 1, 2],
+        equivocal_slides = [3, 4, 5, 6, 7],
+        positive_slides = [8, 9, 10, 11],
+        y n_folds = 3
+    un posible resultado sería:
+        negative_part = [[1], [2], [0]],
+        equivocal_part = [[5,7], [4], [3,6]],
+        positive_part = [[9], [10, 11], [8]]
+    y el resultado final sería un diccionario con
+        {negative_part, equivocal_part, positive_part} donde claramente
+        cada una de las listas tiene largo igual a n_folds (en este caso, 3)
+
+    Args:
+        - n_folds: int. Número de particiones deseadas.
+        - negative_slides: list[int]. Ids de las slides negativas.
+        - equivocal_slides: list[int]. Ids de las slides equívocas.
+        - positive_slides: list[int]. Ids de las slides positivas.
+
+    Returns:
+        dict[str -> list[list[int]]]. Diccionario con negative_part,
+        equivocal_part y positive_part, donde cada una de estas particiones es
+        de largo n_folds.
+
+    """
+    if n_folds == -1:
+        n_folds = min(len(negative_slides), len(
+            equivocal_slides), len(positive_slides))
+
+    # Aleatorizamos los conjuntos de ids
+    negative_slides = np.random.permutation(negative_slides).tolist()
+    equivocal_slides = np.random.permutation(equivocal_slides).tolist()
+    positive_slides = np.random.permutation(positive_slides).tolist()
+
+    # Generamos particiones en los conjuntos de ids (k-fold)
+    negative_part = generate_uneven_partition(negative_slides, n_folds)
+    equivocal_part = generate_uneven_partition(equivocal_slides, n_folds)
+    positive_part = generate_uneven_partition(positive_slides, n_folds)
+
+    return {"negative_part": negative_part,
+            "equivocal_part": equivocal_part,
+            "positive_part": positive_part}
+
+
+def generate_kfold_with_previous_partition(
+        negative_part, equivocal_part, positive_part, train_dir, test_dir,
+        datasets_dst_dir, train_proportions, test_proportions,
+        proportion_threshold=0.1, labels_map=None):
     """Genera k particiones de datos, cada una subdividida en conjuntos de
     entrenamiento, validación y prueba.
 
@@ -336,7 +385,23 @@ def generate_kfold(n_folds, negative_slides, equivocal_slides, positive_slides,
     grupo de biopsias, y se predice en parches extraídos de otro grupo de
     slides. Obviamente, se busca que los conjuntos sean balanceados, con
     cantidades similares de slides negativas (0+ o 1+), equívocas (2+) y
-    positivas (3+).
+    positivas (3+). Así, se piden tres particiones de datos (de ahí el sufijo
+    "with_previous_partition"): negative_part, equivocal_part y positive_part,
+    cada una de las cuales debe tener igual largo, y deben corresponder a una
+    lista de listas, con las ids de las biopsias a usar en cada iteración. Por
+    ejemplo, si:
+        negative_part = [[1], [2], [0]],
+        equivocal_part = [[5,7], [4], [3,6]] y
+        positive_part = [[9], [10, 11], [8]]
+    entonces, se tendrán 3 distintos folds:
+        - En el primero, se entrenará con las imágenes obtenidas de las slides
+        2, 0 (negativas), 4, 3, 6 (equívocas) y 10, 11 y 8 (positivas),
+        mientras que para evaluar se utilizarán las biopsias 1 (negativa),
+        5, 7 (equívocas) y 9 (positiva).
+        - En el segundo, se entrenará con las slides 1,0,5,7,3,6,9 y 8, y se
+        evaluará con las slides 2,4,10 y 11.
+        - En el tercero, se entrenará con las slides 1,2,5,7,4,9,10 y 11, y se
+        evaluará con las slides 0,3,6 y 8.
 
     Finalmente, también se buscará que los datasets generados contengan
     imágenes útiles; es decir, que al menos una porción de la imagen
@@ -345,12 +410,12 @@ def generate_kfold(n_folds, negative_slides, equivocal_slides, positive_slides,
 
     Args:
         - n_folds: int. Número de particiones que se desea generar.
-        - negative_slides: list[str], ids de las slides negativas
-        (clasificación HER2 0+ o 1+)
-        - equivocal_slides: list[str], ids de las slides equívocas
-        (clasificación HER2 2+)
-        - positive_slides: list[str], ids de las slides positivas
-        (clasificación HER2 3+)
+        - negative_part: list[list[int]], lista con distintos folds de slides
+        negativas.
+        - equivocal_part: list[list[int]], lista con distintos folds de slides
+        equívocas.
+        - positive_part: list[list[int]], lista con distintos folds de slides
+        positivas.
         - train_dir: str. Directorio con imágenes de entrenamiento (aquellas
         extraídas de los ROIs)
         - test_dir: str. Directorio con imágenes de prueba (aquellas
@@ -365,7 +430,7 @@ def generate_kfold(n_folds, negative_slides, equivocal_slides, positive_slides,
         asociados la proporción de tejido correspondiente a cada imagen.
         - proportion_threshold: float. Proporción mínima de tejido que debe
         tener una imagen para ser considerada en el dataset final.
-
+        - labels_map: dict[str -> int]. Diccionario con mapeo de labels.
 
     """
 
@@ -386,14 +451,9 @@ def generate_kfold(n_folds, negative_slides, equivocal_slides, positive_slides,
         proportion = proportions_dict[label_and_name]
         return slide_id in valid_ids and proportion > proportion_threshold
 
-    os.makedirs(datasets_dst_dir, exist_ok=True)
-    if n_folds == -1:
-        n_folds = min(len(negative_slides), len(
-            equivocal_slides), len(positive_slides))
-
-    # Se unen las clases 0 y 1 (ambas son negativas)
-    labels_map = {'0': 0, '1': 0, '2': 1, '3': 2}
-
+    assert len(negative_part) == len(equivocal_part) == len(positive_part)
+    # Obtenemos el número de folds a usar
+    n_folds = len(negative_part)
     # Obtenemos los nombres de las imágenes del conjunto de entrenamiento
     train_fname, train_labels, _ = get_filenames_and_labels(
         train_dir, labels_map=labels_map)
@@ -404,16 +464,6 @@ def generate_kfold(n_folds, negative_slides, equivocal_slides, positive_slides,
     # Zipeamos, para posteriormente hacer más fácil el filtrado
     train_data = list(zip(train_fname, train_labels))
     test_data = list(zip(test_fname, test_labels))
-
-    # Aleatorizamos los conjuntos de ids
-    negative_slides = np.random.permutation(negative_slides).tolist()
-    equivocal_slides = np.random.permutation(equivocal_slides).tolist()
-    positive_slides = np.random.permutation(positive_slides).tolist()
-
-    # Generamos particiones en los conjuntos de ids (k-fold)
-    negative_part = generate_uneven_partition(negative_slides, n_folds)
-    equivocal_part = generate_uneven_partition(equivocal_slides, n_folds)
-    positive_part = generate_uneven_partition(positive_slides, n_folds)
 
     for idx in range(n_folds):
         # Nombre del archivo json donde se guardarán los datos
@@ -467,3 +517,52 @@ def generate_kfold(n_folds, negative_slides, equivocal_slides, positive_slides,
 
         # Revisamos la integridad del dataset generado
         check_integrity_dumped_dataset(fold_dataset_path, labels_map)
+
+
+def generate_kfold(n_folds, negative_slides, equivocal_slides, positive_slides,
+                   train_dir, test_dir, datasets_dst_dir,
+                   train_proportions, test_proportions,
+                   proportion_threshold=0.1, labels_map=None):
+    """Genera k particiones de datos, cada una subdividida en conjuntos de
+    entrenamiento, validación y prueba.
+
+    Primero genera una partición de ids en n_folds distintos, y luego llama
+    a generate_kfold_with_previous_partition.
+
+    Args:
+        - n_folds: int. Número de particiones que se desea generar.
+        - negative_slides: list[str], ids de las slides negativas
+        (clasificación HER2 0+ o 1+)
+        - equivocal_slides: list[str], ids de las slides equívocas
+        (clasificación HER2 2+)
+        - positive_slides: list[str], ids de las slides positivas
+        (clasificación HER2 3+)
+        - train_dir: str. Directorio con imágenes de entrenamiento (aquellas
+        extraídas de los ROIs)
+        - test_dir: str. Directorio con imágenes de prueba (aquellas
+        extraídas indistintamente de las slides)
+        - datasets_dst_dir: str. Directorio donde se guardarán los distintos
+        archivos json con los datasets creados.
+        - train_proportions: dict[str -> float]. Diccionario que tiene como
+        llaves los nombres de las imágenes de entrenamiento, y como valores
+        asociados la proporción de tejido correspondiente a cada imagen.
+        - test_proportions: dict[str -> float]. Diccionario que tiene como
+        llaves los nombres de las imágenes de prueba, y como valores
+        asociados la proporción de tejido correspondiente a cada imagen.
+        - proportion_threshold: float. Proporción mínima de tejido que debe
+        tener una imagen para ser considerada en el dataset final.
+        - labels_map: dict[str -> int]. Diccionario con mapeo de labels.
+
+
+    """
+
+    partitions = generate_partitions_slide_ids(
+        n_folds, negative_slides, equivocal_slides, positive_slides)
+    negative_part = partitions["negative_part"]
+    equivocal_part = partitions["equivocal_part"]
+    positive_part = partitions["positive_part"]
+    generate_kfold_with_previous_partition(negative_part, equivocal_part,
+                                           positive_part, train_dir, test_dir,
+                                           datasets_dst_dir,
+                                           train_proportions, test_proportions,
+                                           proportion_threshold, labels_map)
