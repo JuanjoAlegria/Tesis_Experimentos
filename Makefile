@@ -274,7 +274,7 @@ data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids: \
 data/partitions_json/$(SLIDES_DIR)/kfold_fixed_ids.json \
 data/extras/ihc_slides/tissue_proportion_$(PATCHES_FROM_ROIS_DIR).json \
 data/extras/ihc_slides/tissue_proportion_$(ALL_PATCHES_DIR).json 
-	$(PYTHON_BIN) -m src.scripts.ihc.generate_kfold_from_prev_partition.py \
+	$(PYTHON_BIN) -m src.scripts.ihc.generate_kfold_from_prev_partition \
 		--ids_partition_json $< \
 		--n_folds $(N_FOLDS) \
 		--train_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
