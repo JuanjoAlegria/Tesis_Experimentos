@@ -264,6 +264,8 @@ data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold
 
 ####################### K-FOLD FIXED IDS ##################################
 
+K_FOLD_FIXED_IDS_EXPERIMENT = ihc_patches_kfold_fixed_ids_$(MAGNIFICATION)_experiment
+
 data/partitions_json/$(SLIDES_DIR)/kfold_fixed_ids.json:
 	$(PYTHON_BIN) -m src.scripts.ihc.generate_slides_ids_partition \
 		--excel_file data/extras/$(SLIDES_DIR)/HER2.xlsx \
@@ -288,10 +290,10 @@ generate_kfold_fixed_ids_dataset: \
 data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids
 	echo 'listo'
 
-train_kfold: \
-data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold 
+kfold_fixed_ids_experiment:  \
+data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids 
 	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
-		--experiment_name ihc_patches_kfold_$(MAGNIFICATION)_experiment \
+		--experiment_name $(K_FOLD_FIXED_IDS_EXPERIMENT) \
 		--train_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--validation_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--test_images_dir data/processed/$(ALL_PATCHES_DIR) \
@@ -303,3 +305,57 @@ data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold
 		--save_checkpoints_steps 100 \
 		--eval_frequency 100
 
+kfold_fixed_ids_random_experiment: \
+data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids 
+	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
+		--experiment_name $(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment \
+		--train_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--validation_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--test_images_dir data/processed/$(ALL_PATCHES_DIR) \
+		--random_seed $(RANDOM_SEED) \
+		--dataset_path $< \
+		--num_epochs $(NUM_EPOCHS) \
+		--model_name $(MODEL_NAME) \
+		--tensors_to_log_train loss global_step \
+		--save_checkpoints_steps 100 \
+		--eval_frequency 100 \
+		--flip_left_right \
+		--random_crop 20 \
+		--random_scale 20 \
+		--random_brightness 5
+
+kfold_fixed_ids_fine_tuning_experiment: \
+data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids 
+	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
+		--experiment_name $(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment \
+		--train_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--validation_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--test_images_dir data/processed/$(ALL_PATCHES_DIR) \
+		--random_seed $(RANDOM_SEED) \
+		--dataset_path $< \
+		--num_epochs $(NUM_EPOCHS) \
+		--model_name $(MODEL_NAME) \
+		--tensors_to_log_train loss global_step \
+		--save_checkpoints_steps 100 \
+		--eval_frequency 100 \
+		--fine_tuning
+
+kfold_fixed_ids_random_fine_tuning_experiment: \
+data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids 
+	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
+		--experiment_name $(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment \
+		--train_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--validation_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--test_images_dir data/processed/$(ALL_PATCHES_DIR) \
+		--random_seed $(RANDOM_SEED) \
+		--dataset_path $< \
+		--num_epochs $(NUM_EPOCHS) \
+		--model_name $(MODEL_NAME) \
+		--tensors_to_log_train loss global_step \
+		--save_checkpoints_steps 100 \
+		--eval_frequency 100 \
+		--flip_left_right \
+		--random_crop 20 \
+		--random_scale 20 \
+		--random_brightness 5 \
+		--fine_tuning
