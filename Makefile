@@ -276,7 +276,6 @@ data/extras/ihc_slides/tissue_proportion_$(PATCHES_FROM_ROIS_DIR).json \
 data/extras/ihc_slides/tissue_proportion_$(ALL_PATCHES_DIR).json 
 	$(PYTHON_BIN) -m src.scripts.ihc.generate_kfold_from_prev_partition \
 		--ids_partition_json $< \
-		--n_folds $(N_FOLDS) \
 		--train_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--test_dir data/processed/$(ALL_PATCHES_DIR) \
 		--dataset_dst_dir $@ \
