@@ -12,13 +12,17 @@ from ...dataset import data_utils
 
 def main(excel_file, n_folds, train_dir, test_dir, dataset_dst_dir,
          train_proportions_json, test_proportions_json, proportion_threshold):
-    """Crea una partición del dataset.
+    """Crea n_folds particiones del dataset.
     """
+    os.makedirs(dataset_dst_dir, exist_ok=True)
+
     ids, labels = excel.get_valid_slides_ids(excel_file)
     ids, labels = np.array(ids), np.array(labels)
     negative = ids[np.where((labels == '0') | (labels == '1'))]
     equivocal = ids[np.where(labels == '2')]
     positive = ids[np.where(labels == '3')]
+
+    labels_map = {'0': 0, '1': 0, '2': 1, '3': 2}
 
     with open(train_proportions_json) as file:
         train_proportions = json.load(file)
@@ -28,7 +32,7 @@ def main(excel_file, n_folds, train_dir, test_dir, dataset_dst_dir,
     data_utils.generate_kfold(n_folds, negative, equivocal, positive,
                               train_dir, test_dir, dataset_dst_dir,
                               train_proportions, test_proportions,
-                              proportion_threshold)
+                              proportion_threshold, labels_map)
 
 
 if __name__ == "__main__":
