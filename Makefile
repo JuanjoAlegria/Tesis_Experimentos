@@ -261,3 +261,46 @@ data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold
 		--tensors_to_log_train loss global_step \
 		--save_checkpoints_steps 100 \
 		--eval_frequency 100
+
+####################### K-FOLD FIXED IDS ##################################
+
+data/partitions_json/$(SLIDES_DIR)/kfold_fixed_ids.json:
+	$(PYTHON_BIN) -m src.scripts.ihc.generate_slides_ids_partition \
+		--excel_file data/extras/$(SLIDES_DIR)/HER2.xlsx \
+		--n_folds $(N_FOLDS) \
+		--ids_partition_dst $@
+
+data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids: \
+data/partitions_json/$(SLIDES_DIR)/kfold_fixed_ids.json \
+data/extras/ihc_slides/tissue_proportion_$(PATCHES_FROM_ROIS_DIR).json \
+data/extras/ihc_slides/tissue_proportion_$(ALL_PATCHES_DIR).json 
+	$(PYTHON_BIN) -m src.scripts.ihc.generate_kfold_from_prev_partition.py \
+		--ids_partition_json $< \
+		--n_folds $(N_FOLDS) \
+		--train_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--test_dir data/processed/$(ALL_PATCHES_DIR) \
+		--dataset_dst_dir $@ \
+		--train_proportions_json $(word 2,$^) \
+		--test_proportions_json $(word 3,$^) \
+		--proportion_threshold $(PROPORTION_THRESHOLD)
+
+
+generate_kfold_fixed_ids_dataset: \
+data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids
+	echo 'listo'
+
+train_kfold: \
+data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold 
+	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
+		--experiment_name ihc_patches_kfold_$(MAGNIFICATION)_experiment \
+		--train_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--validation_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+		--test_images_dir data/processed/$(ALL_PATCHES_DIR) \
+		--random_seed $(RANDOM_SEED) \
+		--dataset_path $< \
+		--num_epochs $(NUM_EPOCHS) \
+		--model_name $(MODEL_NAME) \
+		--tensors_to_log_train loss global_step \
+		--save_checkpoints_steps 100 \
+		--eval_frequency 100
+
