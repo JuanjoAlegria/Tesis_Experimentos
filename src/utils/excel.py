@@ -25,7 +25,7 @@ def get_valid_slides_ids(excel_file):
         - excel_file: str. Ruta del archivo excel con las clasificaciones.
 
     Returns:
-        2-tuple(list[str]), donde en la primera lista cada item es una 
+        2-tuple(list[str]), donde en la primera lista cada item es una
         id de slide (11, 4, 116, etc), mientras que en la segunda lista cada
         item corresponde a la clasificación HER2 de la slide correlativa.
     """
