@@ -843,12 +843,12 @@ class HubModelExperiment:
         estimator_for_export = self.__build_estimator(mode="export")
 
         feature_inputs = {
-            "images": tf.placeholder(dtype=tf.float32,
-                                     shape=[None,
-                                            self.module_image_shape[0],
-                                            self.module_image_shape[1],
-                                            self.module_image_depth],
-                                     name='input_image_tensor'),
+            "image": tf.placeholder(dtype=tf.float32,
+                                    shape=[None,
+                                           self.module_image_shape[0],
+                                           self.module_image_shape[1],
+                                           self.module_image_depth],
+                                    name='input_image_tensor'),
         }
         serving_input_receiver_fn = tf.estimator.export.build_raw_serving_input_receiver_fn(
             feature_inputs)
