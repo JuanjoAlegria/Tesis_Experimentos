@@ -360,50 +360,12 @@ data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids
 		--random_brightness 5 \
 		--fine_tuning
 
-generate_maps_of_predictions_validation_kfold:
-	for index in 1 2 3 4 5 ; do \
-		echo $$index; \
-        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_rois \
-        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index/validation_predictions.txt \
-        	--rois_dir data/interim/$(ROIS_DIR) \
-        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index/validation_maps \
-        	--patches_height 300 \
-        	--patches_width 300 ; \
-    done;
+############################### EVALUATION #####################################
 
-generate_maps_of_predictions_validation_kfold_random:
-	for index in 1 2 3 4 5 ; do \
-		echo $$index; \
-        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_rois \
-        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index/validation_predictions.txt \
-        	--rois_dir data/interim/$(ROIS_DIR) \
-        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)__random_experiment_$$index/validation_maps \
-        	--patches_height 300 \
-        	--patches_width 300 ; \
-    done;
+DATASET_PARTITION = 'validation'
 
-generate_maps_of_predictions_validation_kfold_fine_tuning:
-	for index in 1 2 3 4 5 ; do \
-		echo $$index; \
-        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_rois \
-        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index/validation_predictions.txt \
-        	--rois_dir data/interim/$(ROIS_DIR) \
-        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index/validation_maps \
-        	--patches_height 300 \
-        	--patches_width 300 ; \
-    done;
-
-generate_maps_of_predictions_validation_kfold_random_fine_tuning:
-	for index in 1 2 3 4 5 ; do \
-		echo $$index; \
-        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_rois \
-        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index/validation_predictions.txt \
-        	--rois_dir data/interim/$(ROIS_DIR) \
-        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index/validation_maps \
-        	--patches_height 300 \
-        	--patches_width 300 ; \
-    done;
-
+# Las predicciones realizadas en los datos de entrenamiento no se guardan al
+# entrenar la red, así que aquí arreglamos ese problema
 predict_train_patches_kfold:
 	for index in 1 2 3 4 5 ; do \
 		echo $$index; \
@@ -414,3 +376,82 @@ predict_train_patches_kfold:
         	--dst_file results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index/train_predictions.txt \
         	--batch_size 100 ; \
     done;
+
+predict_train_patches_kfold_random:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.predict_train_patches \
+        	--dataset_path data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids/dataset_dict_fold_$$index.json  \
+        	--train_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+        	--experiment_saved_model_dir saved_models/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index \
+        	--dst_file results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index/train_predictions.txt \
+        	--batch_size 100 ; \
+    done;
+
+predict_train_patches_kfold_fine_tuning:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.predict_train_patches \
+        	--dataset_path data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids/dataset_dict_fold_$$index.json  \
+        	--train_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+        	--experiment_saved_model_dir saved_models/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index \
+        	--dst_file results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index/train_predictions.txt \
+        	--batch_size 100 ; \
+    done;
+
+predict_train_patches_kfold_random_fine_tuning:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.predict_train_patches \
+        	--dataset_path data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids/dataset_dict_fold_$$index.json  \
+        	--train_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+        	--experiment_saved_model_dir saved_models/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index \
+        	--dst_file results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index/train_predictions.txt \
+        	--batch_size 100 ; \
+    done;
+
+
+generate_maps_of_predictions_rois_fold:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_rois \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index/$(DATASET_PARTITION)_predictions.txt \
+        	--rois_dir data/interim/$(ROIS_DIR) \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index/$(DATASET_PARTITION)_maps \
+        	--patches_height 300 \
+        	--patches_width 300 ; \
+    done;
+
+generate_maps_of_predictions_rois_fold_random:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_rois \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index/$(DATASET_PARTITION)_predictions.txt \
+        	--rois_dir data/interim/$(ROIS_DIR) \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)__random_experiment_$$index/$(DATASET_PARTITION)_maps \
+        	--patches_height 300 \
+        	--patches_width 300 ; \
+    done;
+
+generate_maps_of_predictions_rois_fold_fine_tuning:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_rois \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index/$(DATASET_PARTITION)_predictions.txt \
+        	--rois_dir data/interim/$(ROIS_DIR) \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index/$(DATASET_PARTITION)_maps \
+        	--patches_height 300 \
+        	--patches_width 300 ; \
+    done;
+
+generate_maps_of_predictions_rois_fold_random_fine_tuning:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_rois \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index/$(DATASET_PARTITION)_predictions.txt \
+        	--rois_dir data/interim/$(ROIS_DIR) \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index/$(DATASET_PARTITION)_maps \
+        	--patches_height 300 \
+        	--patches_width 300 ; \
+    done;
+
