@@ -21,6 +21,8 @@ def main(predictions_path, rois_dir, dst_dir, patches_height, patches_width):
         predictions_list = file.readlines()
     if dst_dir is None:
         dst_dir = os.path.split(predictions_path)[0]
+    else:
+        os.makedirs(dst_dir, exist_ok=True)
     predictions_dict = outputs.transform_to_dict(predictions_list)
     all_slides_ids = outputs.get_all_slides_ids(predictions_dict)
     for slide_id in all_slides_ids:
