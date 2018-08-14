@@ -1,13 +1,11 @@
+"""Módulo para evaluar los resultados de un experimento.
+"""
 import os
-import sys
-import json
-import itertools
+import glob
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, accuracy_score, f1_score
-
-REAL_CLASS_INDEX = 0
-PREDICTED_CLASS_INDEX = 1
+from PIL import Image
+from PIL import ImageDraw
+from ..utils import outputs
 
 
 def calculate_tissue_area(slide_id, tissue_proportions,
@@ -100,7 +98,8 @@ def classify_slide_her2(slide_id, network_predictions,
         current_id, *_ = image_name.split("_")
         if current_id == slide_id:
             real_and_predicted = network_predictions[label_and_name]
-            predicted_class_index = real_and_predicted[PREDICTED_CLASS_INDEX]
+            predicted_class_index = real_and_predicted[
+                outputs.PREDICTED_CLASS_INDEX]
             predicted_class = predictions_map[predicted_class_index]
             tissue_area = tissue_proportions[label_and_name]
             areas[predicted_class] += tissue_area
@@ -113,89 +112,84 @@ def classify_slide_her2(slide_id, network_predictions,
     return final_classification
 
 
-def get_all_slides_ids(images_dict):
-    """Obtiene todas las ids de slides en un diccionario de imágenes (como
-    el de proporciones de tejido o el de resultados de la red).
+def get_mask_of_predictions(slide_id, roi_id, predictions_dict, image_size,
+                            patches_height=300, patches_width=300):
+    """Genera una máscara RGBA con las predicciones realizadas por el
+    algoritmo, pintando con transparencia cada parche de acuerdo a su ubicación
+    y clase predicha.
 
     Args:
-        - images_dict: dict[str -> any]. Diccionario con nombres de imágenes
-        en formato label/{slide_id}_rest_of_image_name, sin importar el valor
-        asociado.
-
-    Returns:
-        set[str], con todas las ids únicas de slides encontradas en el
-        diccionario.
-    """
-    slides_ids = set()
-    for label_and_name in images_dict:
-        _, name = label_and_name.split("/")
-        slide_id = name.split("_")[0]
-        if slide_id not in slides_ids:
-            slides_ids.add(slide_id)
-    return slides_ids
-
-
-def transform_predictions_to_dict(predictions_lines):
-    """Transforma una lista con líneas de predicciones realizadas por la red
-    a un diccionario con el nombre de la imagen como llave y valores asociados
-    la clase real de la imagen y la clase predicha por la red.
-
-    prediction_lines es una lista donde cada elemento es un string de la forma:
-    "{label}/{slide_id}_rest.jpg {real_class} {predicted_class}", excepto el
-    primer elemento, que corresponde al header.
-
-    Args:
-        - predictions_lines: list[str]. Lista con los nombres de archivos,
-        clase real y clase predicha.
-
-    Returns:
-        dict[str -> (str, str)]. Diccionario con el nombre de la imagen como
-        llave, y con valor asociado una tupla con la clase real de la imagen
-        en primera posición y la clase predicha en segunda posición.
-
-    """
-    predictions_dict = {}
-    for line in predictions_lines[1:]:
-        label_name, real, predicted = line[:-1].split()
-        classes = (real, predicted)
-        predictions_dict[label_name] = classes
-    return predictions_dict
-
-
-def get_coords_and_preds(slide_id, predictions_dict):
-    """Obtiene las coordenadas de los parches evaluados y las predicciones
-    correspondientes realizadas por un algoritmo de ML para una slide
-    determinada.
-
-    Args:
-        - slide_id: str. Id de la slide.
+        - slide_id: str. Id de la slide con la que se quiere trabajar.
+        - roi_id: str. Id del roi, perteneciente a slide_id, con el que se
+        quiere trabajar.
         - predictions_dict: dict[str -> (str, str)]. Diccionario con el nombre
         de la imagen como llave, y con valor asociado una tupla con la clase
         real de la imagen en primera posición y la clase predicha en segunda
         posición.
+        - image_size: (int, int, int). Tamaño del roi.
+        - patches_height: int. Altura en pixeles de los parches con que se
+        evaluó el algoritmo.
+        - patches_width: int. Ancho en pixeles de los parches con que se
+        evaluó el algoritmo.
 
     Returns:
-        - x_coords: list[int]. Lista con las coordenadas x de los parches
-        de la slide pedida que fueron evaluados por el algoritmo.
-        - y_coords: list[int]. Lista con las coordenadas y de los parches
-        de la slide pedida que fueron evaluados por el algoritmo. Correlativa
-        a x_coords.
-        - preds: list[str]. Predicciones realizadas por la red para cada uno de
-        los parches (correlativo a x_coords e y_coords).
+        PIL.Image en formato RGBA, con cada ubicación pintada de acuerdo al
+        valor predicho por la red.
     """
-    x_coords = []
-    y_coords = []
-    preds = []
-    for key in predictions_dict:
-        _, name = key.split("/")
-        name = name.split(".")[0]
-        current_id, _, _, \
-            x_coord, y_coord = name.split("_")
-        if current_id == slide_id:
-            x_coords.append(int(x_coord[1:]))
-            y_coords.append(int(y_coord[1:]))
-            preds.append(predictions_dict[key][PREDICTED_CLASS_INDEX])
-    return x_coords, y_coords, preds
+    colors = {'2': (0, 255, 0, 60),
+              '1': (255, 255, 0, 60),
+              '0': (255, 0, 0, 60)}
+    x_coords, y_coords, preds = outputs.get_coords_and_preds(
+        slide_id, predictions_dict, roi_id=roi_id)
+    mask = Image.new('RGBA', image_size)
+    draw = ImageDraw.Draw(mask)
+    for x_coord, y_coord, prediction in zip(x_coords, y_coords, preds):
+        draw.rectangle([(x_coord, y_coord),
+                        (x_coord + patches_width, y_coord + patches_height)],
+                       fill=colors[prediction], outline=(255, 255, 255, 255))
+    return mask
+
+
+def generate_map_of_predictions_roi(slide_id, roi_id, rois_dir,
+                                    predictions_dict,
+                                    patches_height=300,
+                                    patches_width=300):
+    """Genera una imagen RGB, donde el fondo es un ROI y sobre él está pintado
+    (con transparencia) cada parche de acuerdo a su ubicación y clase predicha
+    por el algoritmo.
+
+    Args:
+        - slide_id: str. Id de la slide con la que se quiere trabajar.
+        - roi_id: str. Id del roi, perteneciente a slide_id, con el que se
+        quiere trabajar.
+        - rois_dir: Directorio donde se encuentran los ROIs.
+        - predictions_dict: dict[str -> (str, str)]. Diccionario con el nombre
+        de la imagen como llave, y con valor asociado una tupla con la clase
+        real de la imagen en primera posición y la clase predicha en segunda
+        posición.
+        - image_size: (int, int, int). Tamaño del roi.
+        - patches_height: int. Altura en pixeles de los parches con que se
+        evaluó el algoritmo.
+        - patches_width: int. Ancho en pixeles de los parches con que se
+        evaluó el algoritmo.
+
+    Returns:
+        PIL.Image en formato RGB, con cada ubicación pintada de acuerdo al
+        valor predicho por la red, y de fondo el ROI original.
+    """
+    name_template = "{slide_id}_*_{roi_id}.jpg"
+    roi_path_pattern = os.path.join(rois_dir, name_template.format(
+        slide_id=slide_id, roi_id=roi_id))
+    roi_path = glob.glob(roi_path_pattern)[0]
+    roi_img = Image.open(roi_path)
+    roi_alpha = Image.new('RGBA', roi_img.size)
+    roi_alpha.paste(roi_img)
+    mask_of_predictions = get_mask_of_predictions(
+        slide_id, roi_id, predictions_dict, roi_img.size,
+        patches_height, patches_width)
+    roi_alpha.paste(mask_of_predictions, mask=mask_of_predictions)
+    roi_rgb = roi_alpha.convert("RGB")
+    return roi_rgb
 
 
 def generate_map_of_predictions(slide_id, predictions_dict,
@@ -204,7 +198,7 @@ def generate_map_of_predictions(slide_id, predictions_dict,
     """Genera una imagen con el mapeo de predicciones realizadas por el
     algoritmo de machine learning.
 
-    Se genera una reproducción a escala de la slide original, donde para cada
+    Se genera una¿ reproducción a escala de la slide original, donde para cada
     parche evaluado por la red, se le asigna un color dependiendo de la
     predicción realizada.
 
@@ -220,13 +214,14 @@ def generate_map_of_predictions(slide_id, predictions_dict,
         evaluó el algoritmo.
         - map_height: int. Altura en pixeles que debe tener cada mapeo.
         - map_width: int. Ancho en pixeles que debe tener cada mapeo.
+        - roi_id: str. Id del ROI particular que se quiere evaluar.
 
     Returns:
-        3D-np.array, donde cada cuadrante ha sido coloreado de acuerdo a la
+        3D - np.array, donde cada cuadrante ha sido coloreado de acuerdo a la
         predicción realizada por el algoritmo para el parche correspondiente.
     """
     colors = {'2': (0, 255, 0), '1': (255, 255, 0), '0': (255, 0, 0)}
-    x_coords, y_coords, preds = get_coords_and_preds(
+    x_coords, y_coords, preds = outputs.get_coords_and_preds(
         slide_id, predictions_dict)
     x_max = max(x_coords)
     y_max = max(y_coords)

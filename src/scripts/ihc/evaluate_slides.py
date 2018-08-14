@@ -3,11 +3,10 @@ Este script está hecho para funcionar con el archivo excel con el que he
 estado trabajando estas últimas semanas, no es generalizable a otros archivos.
 """
 
-import os
 import json
 import argparse
 import numpy as np
-from ...utils import excel
+from ...utils import excel, outputs
 from ...experiments import evaluation
 
 
@@ -28,9 +27,9 @@ def main(excel_file, predictions_path, tissue_proportions_path):
         predictions_list = file.readlines()
     with open(tissue_proportions_path) as file:
         tissue_proportions_dict = json.load(file)
-    predictions_dict = evaluation.transform_predictions_to_dict(
+    predictions_dict = outputs.transform_to_dict(
         predictions_list)
-    test_ids = evaluation.get_all_slides_ids(predictions_dict)
+    test_ids = outputs.get_all_slides_ids(predictions_dict)
     for test_id in test_ids:
         her2_score = evaluation.classify_slide_her2(
             test_id, predictions_dict, tissue_proportions_dict)
