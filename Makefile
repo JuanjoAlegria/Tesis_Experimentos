@@ -365,7 +365,7 @@ generate_maps_of_predictions_validation_kfold:
 		echo $$index; \
         $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_rois \
         	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index/validation_predictions.txt \
-        	--rois_dir data/processed/$(ROIS_DIR) \
+        	--rois_dir data/interim/$(ROIS_DIR) \
         	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index/validation_maps \
         	--patches_height 300 \
         	--patches_width 300 ; \
