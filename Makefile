@@ -359,3 +359,13 @@ data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids
 		--random_scale 20 \
 		--random_brightness 5 \
 		--fine_tuning
+
+generate_maps_of_predictions_validation_kfold:
+	for index in 1 2 3 4 5; do \
+        $(PYTHON_BIN) -m  src.scripts.ihc.generate_kfold_from_prev_partition \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$(index)/validation_predictions.txt \
+        	--rois_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$(index)/validation_maps \
+        	--patches_height 300 \
+        	--patches_width 300 ; \
+    done;
