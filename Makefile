@@ -361,11 +361,11 @@ data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids
 		--fine_tuning
 
 generate_maps_of_predictions_validation_kfold:
-	for index in 1 ; do \
+	for index in 1 2 3 4 5 ; do \
 		echo $$index; \
         $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_rois \
         	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index/validation_predictions.txt \
-        	--rois_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+        	--rois_dir data/processed/$(ROIS_DIR) \
         	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index/validation_maps \
         	--patches_height 300 \
         	--patches_width 300 ; \
