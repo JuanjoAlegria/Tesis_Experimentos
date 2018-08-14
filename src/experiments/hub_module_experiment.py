@@ -665,35 +665,6 @@ class HubModelExperiment:
             random_scale=random_scale,
             random_brightness=random_brightness)
 
-    # def __serving_input_receiver_fn(self):
-    #     # TODO: ARREGLAR ESTA FUNCIÓN
-    #     """Construye una input_fn para ser utilizada al exportar el modelo.
-
-    #     Returns:
-    #        ServingInputReceiver, listo para ser usado en conjunto con
-    #        estimator.export_model
-    #     """
-    #     feature_spec = {
-    #         'image': tf.FixedLenFeature([], dtype=tf.string)
-    #     }
-
-    #     default_batch_size = 1
-    #     serialized_tf_example = tf.placeholder(
-    #         dtype=tf.string, shape=[default_batch_size],
-    #         name='input_image_tensor')
-
-    #     received_tensors = {'images': serialized_tf_example}
-    #     features = tf.parse_example(serialized_tf_example, feature_spec)
-
-    #     map_fn = lambda img: tf_data_utils.decode_image_from_string(
-    #         img, self.module_image_shape, self.module_image_depth)
-
-    #     features['image'] = tf.map_fn(
-    #         map_fn, features['image'], dtype=tf.float32)
-
-    #     return tf.estimator.export.ServingInputReceiver(features,
-    #                                                     received_tensors)
-
     def _save_best_checkpoint(self, global_step):
         """Guarda el mejor checkpoint con un nombre distinto, para evitar que
         sea borrado. Además, borra el mejor checkpoint anterior (para evitar
@@ -850,8 +821,9 @@ class HubModelExperiment:
                                            self.module_image_depth],
                                     name='input_image_tensor'),
         }
-        serving_input_receiver_fn = tf.estimator.export.build_raw_serving_input_receiver_fn(
-            feature_inputs)
+        serving_input_receiver_fn = \
+            tf.estimator.export.build_raw_serving_input_receiver_fn(
+                feature_inputs)
         estimator_for_export.export_savedmodel(
             self.export_model_dir, serving_input_receiver_fn,
             checkpoint_path=self.__get_best_ckpt_path(), as_text=True)
