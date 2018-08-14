@@ -23,7 +23,7 @@ def write_output(filenames, predictions, real_labels=None,
     if real_labels is None:
         real_labels = [-1] * len(predictions)
     for filename, real_label, prediction in \
-            zip(filenames, predictions, real_labels):
+            zip(filenames, real_labels, predictions):
         line = "{fn} {real} {predicted}\n".format(
             fn=filename, real=real_label, predicted=prediction)
         lines.append(line)
