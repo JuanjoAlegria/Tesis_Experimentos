@@ -178,6 +178,9 @@ def generate_map_of_predictions_roi(slide_id, roi_id, rois_dir,
         valor predicho por la red, y de fondo el ROI original.
     """
     name_template = "{slide_id}_*_{roi_id}.jpg"
+    import pdb
+    pdb.set_trace()  # breakpoint dacf5370 //
+
     roi_path_pattern = os.path.join(rois_dir, name_template.format(
         slide_id=slide_id, roi_id=roi_id))
     roi_path = glob.glob(roi_path_pattern)[0]
