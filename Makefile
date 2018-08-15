@@ -461,3 +461,9 @@ generate_all_maps_of_predictions_rois:
 	generate_maps_of_predictions_rois_fold_random; \
 	generate_maps_of_predictions_rois_fold_fine_tuning; \
 	generate_maps_of_predictions_rois_fold_random_fine_tuning;
+
+predict_all_train_patches:
+	predict_train_patches_kfold; \
+	predict_train_patches_kfold_random; \
+	predict_train_patches_kfold_fine_tuning; \
+	predict_train_patches_kfold_random_fine_tuning; \
