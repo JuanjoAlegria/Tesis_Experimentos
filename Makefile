@@ -428,7 +428,7 @@ generate_maps_of_predictions_rois_fold_random:
         $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_rois \
         	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index/$(DATASET_PARTITION)_predictions.txt \
         	--rois_dir data/interim/$(ROIS_DIR) \
-        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)__random_experiment_$$index/$(DATASET_PARTITION)_maps \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index/$(DATASET_PARTITION)_maps \
         	--patches_height 300 \
         	--patches_width 300 ; \
     done;
