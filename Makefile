@@ -455,3 +455,9 @@ generate_maps_of_predictions_rois_fold_random_fine_tuning:
         	--patches_width 300 ; \
     done;
 
+
+generate_all_maps_of_predictions_rois:
+	generate_maps_of_predictions_rois_fold; \
+	generate_maps_of_predictions_rois_fold_random; \
+	generate_maps_of_predictions_rois_fold_fine_tuning; \
+	generate_maps_of_predictions_rois_fold_random_fine_tuning;
