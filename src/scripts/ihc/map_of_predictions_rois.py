@@ -32,7 +32,7 @@ def main(predictions_path, rois_dir, dst_dir, patches_height, patches_width):
                 slide_id, roi_id, rois_dir, predictions_dict,
                 patches_height, patches_width)
             save_path = os.path.join(
-                dst_dir, "{}_{}.png".format(slide_id, roi_id))
+                dst_dir, "{}_{}.jpg".format(slide_id, roi_id))
             map_image.save(save_path)
 
 
