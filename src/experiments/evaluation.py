@@ -192,15 +192,15 @@ def generate_map_of_predictions_roi(slide_id, roi_id, rois_dir,
     return roi_rgb
 
 
-def generate_map_of_predictions(slide_id, predictions_dict,
-                                patches_height=300, patches_width=300,
-                                map_height=8, map_width=8):
+def generate_map_of_predictions_slides(slide_id, predictions_dict,
+                                       patches_height=300, patches_width=300,
+                                       map_height=8, map_width=8):
     """Genera una imagen con el mapeo de predicciones realizadas por el
     algoritmo de machine learning.
 
-    Se genera una¿ reproducción a escala de la slide original, donde para cada
+    Se genera una reproducción a escala de la slide original, donde para cada
     parche evaluado por la red, se le asigna un color dependiendo de la
-    predicción realizada.
+    predicción realizada en una ventana de tamaño map_height x map_width.
 
     Args:
         - slide_id: str. Id de la slide cuyo mapeo se desea generar.
