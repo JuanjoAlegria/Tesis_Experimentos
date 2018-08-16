@@ -360,7 +360,7 @@ data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids
 		--random_brightness 5 \
 		--fine_tuning
 
-############################### EVALUATION #####################################
+############################### EVALUATION ###################################
 
 DATASET_PARTITION = 'validation'
 
@@ -410,8 +410,18 @@ predict_train_patches_kfold_random_fine_tuning:
         	--batch_size 100 ; \
     done;
 
+predict_all_train_patches: \
+	predict_train_patches_kfold \
+	predict_train_patches_kfold_random \
+	predict_train_patches_kfold_fine_tuning \
+	predict_train_patches_kfold_random_fine_tuning
+	echo "Predicciones listas"
 
-generate_maps_of_predictions_rois_fold:
+## Mapa de predicciones para ROIs: corresponden a los ROIs originales, donde ## para cada parche extraído desde allí es pintado con transparencia con un 
+## color correspondiente a la predicción realizada por la red. De esta forma, 
+## el fondo de la imagen es el ROI original, y además tiene ventanas pintadas ## de distintos colores. 
+## Esto script sirve para los conjuntos de entrenamiento y validación.
+generate_maps_of_predictions_rois_kfold:
 	for index in 1 2 3 4 5 ; do \
 		echo $$index; \
         $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_rois \
@@ -422,7 +432,7 @@ generate_maps_of_predictions_rois_fold:
         	--patches_width 300 ; \
     done;
 
-generate_maps_of_predictions_rois_fold_random:
+generate_maps_of_predictions_rois_kfold_random:
 	for index in 1 2 3 4 5 ; do \
 		echo $$index; \
         $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_rois \
@@ -433,7 +443,7 @@ generate_maps_of_predictions_rois_fold_random:
         	--patches_width 300 ; \
     done;
 
-generate_maps_of_predictions_rois_fold_fine_tuning:
+generate_maps_of_predictions_rois_kfold_fine_tuning:
 	for index in 1 2 3 4 5 ; do \
 		echo $$index; \
         $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_rois \
@@ -444,7 +454,7 @@ generate_maps_of_predictions_rois_fold_fine_tuning:
         	--patches_width 300 ; \
     done;
 
-generate_maps_of_predictions_rois_fold_random_fine_tuning:
+generate_maps_of_predictions_rois_kfold_random_fine_tuning:
 	for index in 1 2 3 4 5 ; do \
 		echo $$index; \
         $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_rois \
@@ -457,15 +467,64 @@ generate_maps_of_predictions_rois_fold_random_fine_tuning:
 
 
 generate_all_maps_of_predictions_rois: \
-	generate_maps_of_predictions_rois_fold \
-	generate_maps_of_predictions_rois_fold_random \
-	generate_maps_of_predictions_rois_fold_fine_tuning \
-	generate_maps_of_predictions_rois_fold_random_fine_tuning
-	echo "Mapas listos"
+	generate_maps_of_predictions_rois_kfold \
+	generate_maps_of_predictions_rois_kfold_random \
+	generate_maps_of_predictions_rois_kfold_fine_tuning \
+	generate_maps_of_predictions_rois_kfold_random_fine_tuning
+	echo "Mapas de ROIs listos"
 
-predict_all_train_patches: \
-	predict_train_patches_kfold \
-	predict_train_patches_kfold_random \
-	predict_train_patches_kfold_fine_tuning \
-	predict_train_patches_kfold_random_fine_tuning
-	echo "Predicciones listas"
+
+generate_maps_of_predictions_slides_kfold:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_slides \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index/test_predictions.txt \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index/test_maps \
+        	--patches_height 300 \
+        	--patches_width 300 \
+        	--map_window_height 8 \
+        	--map_window_width 8; \
+    done;
+
+generate_maps_of_predictions_slides_kfold_random:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_slides \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index/test_predictions.txt \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index/test_maps \
+        	--patches_height 300 \
+        	--patches_width 300 \
+        	--map_window_height 8 \
+        	--map_window_width 8; \
+    done;
+
+generate_maps_of_predictions_slides_kfold_fine_tuning:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_slides \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index/test_predictions.txt \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index/test_maps \
+        	--patches_height 300 \
+        	--patches_width 300 \
+        	--map_window_height 8 \
+        	--map_window_width 8; \
+    done;
+
+generate_maps_of_predictions_slides_kfold_random_fine_tuning:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_slides \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index/test_predictions.txt \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index/test_maps \
+        	--patches_height 300 \
+        	--patches_width 300 \
+        	--map_window_height 8 \
+        	--map_window_width 8; \
+    done;
+
+generate_all_maps_of_predictions_slides: \
+	generate_maps_of_predictions_slides_kfold \
+	generate_maps_of_predictions_slides_kfold_random \
+	generate_maps_of_predictions_slides_kfold_fine_tuning \
+	generate_maps_of_predictions_slides_kfold_random_fine_tuning
+	echo "Mapas de Slides listos"
