@@ -10,7 +10,8 @@ from ...experiments import evaluation
 from ...utils import outputs
 
 
-def main(predictions_path, dst_dir, patches_height, patches_width):
+def main(predictions_path, dst_dir, patches_height,
+         patches_width, map_window_height, map_window_width):
     """Clasifica biopsias intentando seguir las guías clínicas.
 
     Args:
@@ -22,13 +23,17 @@ def main(predictions_path, dst_dir, patches_height, patches_width):
         predictions_list = file.readlines()
     if dst_dir is None:
         dst_dir = os.path.split(predictions_path)[0]
+    else:
+        os.makedirs(dst_dir, exist_ok=True)
     predictions_dict = outputs.transform_to_dict(predictions_list)
     all_slides_ids = outputs.get_all_slides_ids(predictions_dict)
     for slide_id in all_slides_ids:
-        map_image = evaluation.generate_map_of_predictions(
+        map_image = evaluation.generate_map_of_predictions_slides(
             slide_id, predictions_dict,
             patches_height=patches_height,
-            patches_width=patches_width)
+            patches_width=patches_width,
+            map_height=map_window_height,
+            map_width=map_window_width)
         pil_image = Image.fromarray(map_image)
         save_path = os.path.join(dst_dir, "{}.png".format(slide_id))
         pil_image.save(save_path)
@@ -63,7 +68,20 @@ if __name__ == "__main__":
         help="Ancho de los parches utilizados",
         default=300
     )
+    PARSER.add_argument(
+        '--map_window_height',
+        type=int,
+        help="Altura que debe tener la ventana usada para pintar cada parche",
+        default=8
+    )
+    PARSER.add_argument(
+        '--map_window_width',
+        type=int,
+        help="Altura que debe tener la ventana usada para pintar cada parche",
+        default=8
+    )
 
     FLAGS = PARSER.parse_args()
     main(FLAGS.predictions_path, FLAGS.dst_dir,
-         FLAGS.patches_height, FLAGS.patches_width)
+         FLAGS.patches_height, FLAGS.patches_width,
+         FLAGS.map_window_height, FLAGS.map_window_width)
