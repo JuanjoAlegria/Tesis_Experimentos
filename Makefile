@@ -264,7 +264,7 @@ data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold
 
 ####################### K-FOLD FIXED IDS ##################################
 
-K_FOLD_FIXED_IDS_EXPERIMENT = ihc_patches_kfold_fixed_ids_$(MAGNIFICATION)_experiment
+K_FOLD_FIXED_IDS_EXPERIMENT = ihc_patches_kfold_fixed_ids_$(MAGNIFICATION)
 
 data/partitions_json/$(SLIDES_DIR)/kfold_fixed_ids.json:
 	$(PYTHON_BIN) -m src.scripts.ihc.generate_slides_ids_partition \
@@ -293,7 +293,7 @@ data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids
 kfold_fixed_ids_experiment:  \
 data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids 
 	$(PYTHON_BIN) -m src.scripts.ihc.train_model \
-		--experiment_name $(K_FOLD_FIXED_IDS_EXPERIMENT) \
+		--experiment_name $(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment \
 		--train_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--validation_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
 		--test_images_dir data/processed/$(ALL_PATCHES_DIR) \
@@ -372,8 +372,8 @@ predict_train_patches_kfold:
         $(PYTHON_BIN) -m  src.scripts.ihc.predict_train_patches \
         	--dataset_path data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids/dataset_dict_fold_$$index.json  \
         	--train_images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
-        	--experiment_saved_model_dir saved_models/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index \
-        	--dst_file results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index/train_predictions.txt \
+        	--experiment_saved_model_dir saved_models/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index \
+        	--dst_file results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index/train_predictions.txt \
         	--batch_size 100 ; \
     done;
 
@@ -425,9 +425,9 @@ generate_maps_of_predictions_rois_kfold:
 	for index in 1 2 3 4 5 ; do \
 		echo $$index; \
         $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_rois \
-        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index/$(DATASET_PARTITION)_predictions.txt \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index/$(DATASET_PARTITION)_predictions.txt \
         	--rois_dir data/interim/$(ROIS_DIR) \
-        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index/$(DATASET_PARTITION)_maps \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index/$(DATASET_PARTITION)_maps \
         	--patches_height 300 \
         	--patches_width 300 ; \
     done;
@@ -478,8 +478,8 @@ generate_maps_of_predictions_slides_kfold:
 	for index in 1 2 3 4 5 ; do \
 		echo $$index; \
         $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_slides \
-        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index/test_predictions.txt \
-        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_$$index/test_maps \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index/test_predictions.txt \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index/test_maps \
         	--patches_height 300 \
         	--patches_width 300 \
         	--map_window_height 8 \
