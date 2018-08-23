@@ -80,6 +80,36 @@ def transform_to_dict(output_lines):
     return output_dict
 
 
+def transform_to_lists(output_lines):
+    """Transforma una lista con líneas de predicciones realizadas por la red
+    a tres listas: la primera con los nombres de las imágenes, la segunda con
+    las clases reales y la tercera con las clases predichas por la red.
+
+    output_lines es una lista donde cada elemento es un string de la forma:
+    "{label}/{slide_id}_rest.jpg {real_class} {predicted_class}", excepto el
+    primer elemento, que corresponde al header.
+
+    Args:
+        - output_lines: list[str]. Lista con los nombres de archivos,
+        clase real y clase predicha.
+
+    Returns:
+        list(str), list(str), list(str). La primera lista contiene los nombres
+        de las imágenes, la segunda lista contiene las clases reales y la
+        tercera contiene las clases predichas por la red.
+
+    """
+    filenames = []
+    real_classes = []
+    pred_classes = []
+    for line in output_lines[1:]:
+        name, real, predicted = line[:-1].split()
+        filenames.append(name)
+        real_classes.append(real)
+        pred_classes.append(predicted)
+    return filenames, real_classes, pred_classes
+
+
 def get_rois_ids(slide_id, output_dict):
     """Obtiene todas las ids de ROIs almacenadas en un diccionario de
     predicciones, para determinada slide.
