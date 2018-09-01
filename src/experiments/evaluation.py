@@ -2,7 +2,9 @@
 """
 import os
 import glob
+import itertools
 import numpy as np
+import matplotlib.pyplot as plt
 from PIL import Image
 from PIL import ImageDraw
 from ..utils import outputs
@@ -237,42 +239,36 @@ def generate_map_of_predictions_slides(slide_id, predictions_dict,
                   rescaled_x: rescaled_x + map_width] = current_color
     return map_image
 
-# def plot_confusion_matrix(cm, classes,
-#                           experiment_name,
-#                           partition_name,
-#                           normalize=False,
-#                           cmap=plt.cm.Blues):
-#     """
-#     This function prints and plots the confusion matrix.
-#     Normalization can be applied by setting `normalize=True`.
-#     """
-#     if normalize:
-#         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-#         print("Matriz de confusión normalizada")
-#     else:
-#         print("Matriz de confusión, sin normalizar")
 
-#     print(cm)
+def plot_confusion_matrix(matrix, classes, title,
+                          normalize=False, cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if normalize:
+        matrix = matrix.astype('float') / matrix.sum(axis=1)[:, np.newaxis]
 
-#     title = "Matriz de confusión para experimento\n" + experiment_name + \
-#             ",\nconjunto de " + partition_name
-#     plt.imshow(cm, interpolation='nearest', cmap=cmap)
-#     plt.title(title)
-#     plt.colorbar()
-#     tick_marks = np.arange(len(classes))
-#     plt.xticks(tick_marks, classes, rotation=45)
-#     plt.yticks(tick_marks, classes)
+    fig = plt.figure()
+    plt.imshow(matrix, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
 
-#     fmt = '.2f' if normalize else 'd'
-#     thresh = cm.max() / 2.
-#     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-#         plt.text(j, i, format(cm[i, j], fmt),
-#                  horizontalalignment="center",
-#                  color="white" if cm[i, j] > thresh else "black")
+    fmt = '.2f' if normalize else 'd'
+    thresh = matrix.max() / 2.
+    for i, j in itertools.product(range(matrix.shape[0]),
+                                  range(matrix.shape[1])):
+        plt.text(j, i, format(matrix[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if matrix[i, j] > thresh else "black")
 
-#     plt.ylabel('Clase verdadera')
-#     plt.xlabel('Clase predicha')
-#     plt.tight_layout()
+    plt.ylabel('Clase verdadera')
+    plt.xlabel('Clase predicha')
+    plt.tight_layout()
+    return fig
 
 # def map_prediction2label(json_predictions):
 #     map_dict = {0: 1, 1: 3, 2: 0, 3: 2}
