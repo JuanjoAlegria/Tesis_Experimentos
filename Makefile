@@ -528,3 +528,50 @@ generate_all_maps_of_predictions_slides: \
 	generate_maps_of_predictions_slides_kfold_fine_tuning \
 	generate_maps_of_predictions_slides_kfold_random_fine_tuning
 	echo "Mapas de Slides listos"
+
+
+########################## PER MODEL PLOTS ####################################
+
+generate_per_model_plots_kfold:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.per_model_plot \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index/test_predictions.txt \
+        	--excel_file data/extras/$(SLIDES_DIR)/HER2.xlsx \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index; \
+    done;
+
+generate_per_model_plots_kfold_random:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.per_model_plot \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index/test_predictions.txt \
+        	--excel_file data/extras/$(SLIDES_DIR)/HER2.xlsx \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index; \
+    done;
+
+generate_per_model_plots_kfold_fine_tuning:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.per_model_plot \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index/test_predictions.txt \
+        	--excel_file data/extras/$(SLIDES_DIR)/HER2.xlsx \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index; \
+    done;
+
+generate_per_model_plots_kfold_random_fine_tuning:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.per_model_plot \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index/test_predictions.txt \
+        	--excel_file data/extras/$(SLIDES_DIR)/HER2.xlsx \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index; \
+    done;
+
+
+generate_all_per_model_plots: \
+	generate_per_model_plots_kfold \
+	generate_per_model_plots_kfold_random \
+	generate_per_model_plots_kfold_fine_tuning \
+	generate_per_model_plots_kfold_random_fine_tuning
+	echo "Gráficos por modelo listos"
