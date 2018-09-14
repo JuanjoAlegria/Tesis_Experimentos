@@ -48,8 +48,7 @@ def get_all_slides_ids(images_dict):
     for label_and_name in images_dict:
         _, name = label_and_name.split("/")
         slide_id = name.split("_")[0]
-        if slide_id not in slides_ids:
-            slides_ids.add(slide_id)
+        slides_ids.add(slide_id)
     return slides_ids
 
 
@@ -178,3 +177,40 @@ def get_coords_and_preds(slide_id, output_dict, roi_id=None):
             y_coords.append(int(y_coord[1:]))
             preds.append(output_dict[key][PREDICTED_CLASS_INDEX])
     return x_coords, y_coords, preds
+
+
+def get_slides_aggregated_results(images_names, images_predicted_classes):
+    """Genera un diccionario con los resultados agregados de cada slide.
+
+    images_names es una lista donde cada elemento es un string de la
+    forma: "{label}/{slide_id}_rest.jpg", e images_predicted_classes es
+    correlativa a images_names. Luego, para cada slide única se cuenta la
+    cantidad de imágenes predichas como clase 0,1 o 2, y se genera un
+    diccionario con esa información.
+
+    Args:
+        - images_names: list[str]. Lista con los nombres de las imágenes, en la
+        forma {label}/{slide_id}_rest.jpg.
+        - images_predicted_classes: list[str]. Lista con las clases predichas
+        por el algoritmo, correlativa a images_names.
+
+    Returns:
+        dict[str->dict[str->int]]. El diccionario exterior tiene como llaves
+        las ids de las slides y como valor asociado un nuevo diccionario. Este
+        diccionario interior tiene cuatro llaves ("0", "1", "2" y "total"), y
+        como valor asociado está la cantidad de imágenes que fueron
+        clasificadas con dichas etiquetas (excepto en el caso de "total", que
+        representa la suma de todas los parches de esa slide)
+
+        Ejemplo: {"116": {"0": 2500, "1": 500, "2": 3000, "total": 6000},
+                  "4": {"0": 4890, "1": 560, "2": 300, "total": 5750}}
+    """
+    slides_results = {}
+    for label_name, pred in zip(images_names, images_predicted_classes):
+        _, name = label_name.split("/")
+        slide_id, *_ = name.split("_")
+        if slide_id not in slides_results:
+            slides_results[slide_id] = {"0": 0, "1": 0, "2": 0, "total": 0}
+        slides_results[slide_id][pred] += 1
+        slides_results[slide_id]["total"] += 1
+    return slides_results
