@@ -9,44 +9,6 @@ import matplotlib.pyplot as plt
 from ...utils import outputs, excel
 
 
-def get_slides_results(images_names, images_predicted_classes):
-    """Genera un diccionario con los resultados agregados de cada slide.
-
-    images_names es una lista donde cada elemento es un string de la
-    forma: "{label}/{slide_id}_rest.jpg", e images_predicted_classes es
-    correlativa a images_names. Luego, para cada slide única se cuenta la
-    cantidad de imágenes predichas como clase 0,1 o 2, y se genera un
-    diccionario con esa información.
-
-    Args:
-        - images_names: list[str]. Lista con los nombres de las imágenes, en la
-        forma {label}/{slide_id}_rest.jpg.
-        - images_predicted_classes: list[str]. Lista con las clases predichas
-        por el algoritmo, correlativa a images_names.
-
-    Returns:
-        dict[str->dict[str->int]]. El diccionario exterior tiene como llaves
-        las ids de las slides y como valor asociado un nuevo diccionario. Este
-        diccionario interior tiene tres llaves ("0", "1" y "2"), y como valor
-        asociado está la cantidad de imágenes que fueron clasificadas con
-        dichas etiquetas.
-
-        Ejemplo: {"116": {"0": 2500, "1": 500, "2": 3000},
-                  "4": {"0": 4890, "1": 560, "2": 300}}
-    """
-    slides_results = {}
-    n_patches = {}
-    for label_name, pred in zip(images_names, images_predicted_classes):
-        _, name = label_name.split("/")
-        slide_id, *_ = name.split("_")
-        if slide_id not in slides_results:
-            slides_results[slide_id] = {"0": 0, "1": 0, "2": 0}
-            n_patches[slide_id] = 0
-        slides_results[slide_id][pred] += 1
-        n_patches[slide_id] += 1
-    return slides_results, n_patches
-
-
 def get_model_plot(images_names, images_predicted_classes,
                    slides_real_classes, title):
     """Genera un gráfico de barras para el modelo.
@@ -65,7 +27,7 @@ def get_model_plot(images_names, images_predicted_classes,
         matplotlib.figure.Figure, gráfico de barras disgregado por slides y
         clase predicha.
     """
-    slides_results, n_patches = get_slides_results(
+    slides_results = outputs.get_slides_aggregated_results(
         images_names, images_predicted_classes)
     n_slides = len(slides_results)
     indexes_plot = np.arange(n_slides)
@@ -79,9 +41,9 @@ def get_model_plot(images_names, images_predicted_classes,
 
     fig, axes = plt.subplots(figsize=(10, 8))
     for idx, pred_class in enumerate(["0", "1", "2"]):
-        n_pred_images = [
-            slides_results[slide_id][pred_class] / n_patches[slide_id]
-            for slide_id in slides_ids]
+        n_pred_images = [slides_results[slide_id][pred_class] /
+                         slides_results[slide_id]["total"]
+                         for slide_id in slides_ids]
         axes.bar(indexes_plot + bar_width * idx,
                  n_pred_images, bar_width,
                  color=colors[idx], label=labels[idx])
