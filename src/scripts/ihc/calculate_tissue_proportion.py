@@ -15,11 +15,11 @@ def get_tissue_proportion_from_path(image_path):
     conociendo sólo su ubicación en disco.
 
     Args:
-            - image_path: str. Ubicación de la imagen.
+        - image_path: str. Ubicación de la imagen.
 
     Returns:
-            float en el rango [0,1], representando la proporción de tejido
-            en la imagen.
+        float en el rango [0,1], representando la proporción de tejido en la
+        imagen.
     """
     patch = cv2.imread(image_path)
     return image.calculate_tissue_proportion(patch)
@@ -43,8 +43,8 @@ def main(patches_dir, json_path):
         with concurrent.futures.ProcessPoolExecutor() as executor:
             filenames = glob.glob(os.path.join(subdir_full, "*.jpg"))
             for whole_image_name, tissue_proportion in zip(
-                filenames, executor.map(get_tissue_proportion_from_path,
-                                        filenames)):
+                    filenames, executor.map(get_tissue_proportion_from_path,
+                                            filenames)):
                 head, image_name = os.path.split(whole_image_name)
                 _, label = os.path.split(head)
                 label_and_name = os.path.join(label, image_name)
