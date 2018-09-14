@@ -9,6 +9,15 @@ from PIL import Image
 from PIL import ImageDraw
 from ..utils import outputs
 
+PREDICTIONS_MAP = {"0": "negative", "1": "equivocal", "2": "positive"}
+SCALE_MAP = {"x40": 1, "x20": 0.5, "x10": 0.25, "x5": 0.125}
+COLORS_RGB = {'2': (0, 255, 0),
+              '1': (255, 255, 0),
+              '0': (255, 0, 0)}
+COLORS_RGBA = {'2': (0, 255, 0, 30),
+               '1': (255, 255, 0, 30),
+               '0': (255, 0, 0, 30)}
+
 
 def calculate_tissue_area(slide_id, tissue_proportions,
                           patch_width, patch_height):
@@ -92,7 +101,6 @@ def classify_slide_her2(slide_id, network_predictions,
             - 1 si es negativa (correspondiente a 1+ o 0+)
 
     """
-    predictions_map = {"0": "negative", "1": "equivocal", "2": "positive"}
     areas = {"negative": 0.0, "equivocal": 0.0, "positive": 0.0}
     n_patches = {"negative": 0, "equivocal": 0, "positive": 0}
     for label_and_name in network_predictions:
@@ -102,7 +110,7 @@ def classify_slide_her2(slide_id, network_predictions,
             real_and_predicted = network_predictions[label_and_name]
             predicted_class_index = real_and_predicted[
                 outputs.PREDICTED_CLASS_INDEX]
-            predicted_class = predictions_map[predicted_class_index]
+            predicted_class = PREDICTIONS_MAP[predicted_class_index]
             tissue_area = tissue_proportions[label_and_name]
             areas[predicted_class] += tissue_area
             n_patches[predicted_class] += 1
@@ -114,8 +122,10 @@ def classify_slide_her2(slide_id, network_predictions,
     return final_classification
 
 
-def get_mask_of_predictions(slide_id, roi_id, predictions_dict, image_size,
-                            patches_height=300, patches_width=300):
+def get_mask_of_predictions(slide_id, predictions_dict,
+                            image_size, roi_id=None,
+                            patches_height=300, patches_width=300,
+                            magnification="x40", colors=COLORS_RGBA):
     """Genera una máscara RGBA con las predicciones realizadas por el
     algoritmo, pintando con transparencia cada parche de acuerdo a su ubicación
     y clase predicha.
@@ -133,29 +143,36 @@ def get_mask_of_predictions(slide_id, roi_id, predictions_dict, image_size,
         evaluó el algoritmo.
         - patches_width: int. Ancho en pixeles de los parches con que se
         evaluó el algoritmo.
+        - magnification: magnificación en la que se encuentra la imagen.
+        - colors: dict[str->(int, int, int, int)]. Mapa de colores a usar,
+        incluyendo el canal alpha. Si no se entrega un valor, se usará
+        COLORS_RGBA.
 
     Returns:
         PIL.Image en formato RGBA, con cada ubicación pintada de acuerdo al
         valor predicho por la red.
     """
-    colors = {'2': (0, 255, 0, 60),
-              '1': (255, 255, 0, 60),
-              '0': (255, 0, 0, 60)}
+
+    scale = SCALE_MAP[magnification]
+    patches_height = int(patches_height * scale)
+    patches_width = int(patches_width * scale)
+
     x_coords, y_coords, preds = outputs.get_coords_and_preds(
         slide_id, predictions_dict, roi_id=roi_id)
     mask = Image.new('RGBA', image_size)
     draw = ImageDraw.Draw(mask)
     for x_coord, y_coord, prediction in zip(x_coords, y_coords, preds):
+        x_coord, y_coord = int(x_coord * scale), int(y_coord * scale)
         draw.rectangle([(x_coord, y_coord),
                         (x_coord + patches_width, y_coord + patches_height)],
-                       fill=colors[prediction], outline=(255, 255, 255, 255))
+                       fill=colors[prediction])
     return mask
 
 
 def generate_map_of_predictions_roi(slide_id, roi_id, rois_dir,
                                     predictions_dict,
-                                    patches_height=300,
-                                    patches_width=300):
+                                    patches_height=300, patches_width=300,
+                                    magnification="x40", colors=COLORS_RGBA):
     """Genera una imagen RGB, donde el fondo es un ROI y sobre él está pintado
     (con transparencia) cada parche de acuerdo a su ubicación y clase predicha
     por el algoritmo.
@@ -169,11 +186,14 @@ def generate_map_of_predictions_roi(slide_id, roi_id, rois_dir,
         de la imagen como llave, y con valor asociado una tupla con la clase
         real de la imagen en primera posición y la clase predicha en segunda
         posición.
-        - image_size: (int, int, int). Tamaño del roi.
         - patches_height: int. Altura en pixeles de los parches con que se
         evaluó el algoritmo.
         - patches_width: int. Ancho en pixeles de los parches con que se
         evaluó el algoritmo.
+        - magnification: magnificación en la que se encuentra la imagen.
+        - colors: dict[str->(int, int, int, int)]. Mapa de colores a usar,
+        incluyendo el canal alpha. Si no se entrega un valor, se usará
+        COLORS_RGBA.
 
     Returns:
         PIL.Image en formato RGB, con cada ubicación pintada de acuerdo al
@@ -183,20 +203,61 @@ def generate_map_of_predictions_roi(slide_id, roi_id, rois_dir,
     roi_path_pattern = os.path.join(rois_dir, name_template.format(
         slide_id=slide_id, roi_id=roi_id))
     roi_path = glob.glob(roi_path_pattern)[0]
-    roi_img = Image.open(roi_path)
-    roi_alpha = Image.new('RGBA', roi_img.size)
-    roi_alpha.paste(roi_img)
-    mask_of_predictions = get_mask_of_predictions(
-        slide_id, roi_id, predictions_dict, roi_img.size,
-        patches_height, patches_width)
-    roi_alpha.paste(mask_of_predictions, mask=mask_of_predictions)
-    roi_rgb = roi_alpha.convert("RGB")
-    return roi_rgb
+    return generate_map_of_predictions(roi_path, predictions_dict,
+                                       slide_id, roi_id, patches_height,
+                                       patches_width, magnification, colors)
+
+
+def generate_map_of_predictions(img_path, predictions_dict,
+                                slide_id, roi_id=None,
+                                patches_height=300, patches_width=300,
+                                magnification="x40", colors=COLORS_RGBA):
+    """Genera una imagen RGB, donde el fondo es un ROI y sobre él está pintado
+    (con transparencia) cada parche de acuerdo a su ubicación y clase predicha
+    por el algoritmo.
+
+    Args:
+        - img_path: str. Ruta a la imagen.
+        - predictions_dict: dict[str -> (str, str)]. Diccionario con el nombre
+        de la imagen como llave, y con valor asociado una tupla con la clase
+        real de la imagen en primera posición y la clase predicha en segunda
+        posición.
+        - slide_id: str. Id de la slide con la que se quiere trabajar.
+        - roi_id: str. Id del roi, perteneciente a slide_id, con el que se
+        quiere trabajar.
+        - patches_height: int. Altura en pixeles de los parches con que se
+        evaluó el algoritmo.
+        - patches_width: int. Ancho en pixeles de los parches con que se
+        evaluó el algoritmo.
+        - magnification: magnificación en la que se encuentra la imagen.
+        - colors: dict[str->(int, int, int, int)]. Mapa de colores a usar,
+        incluyendo el canal alpha. Si no se entrega un valor, se usará
+        COLORS_RGBA.
+
+    Returns:
+        PIL.Image en formato RGB, con cada ubicación pintada de acuerdo al
+        valor predicho por la red, y de fondo el ROI original.
+    """
+    try:
+        img = Image.open(img_path)
+    except IOError:
+        print("No se pudo abrir imagen", img_path)
+    else:
+        alpha = Image.new('RGBA', img.size)
+        alpha.paste(img)
+        mask_predictions = get_mask_of_predictions(slide_id, predictions_dict,
+                                                   img.size, roi_id,
+                                                   patches_height, patches_width,
+                                                   magnification, colors)
+        alpha.paste(mask_predictions, mask=mask_predictions)
+        rgb = alpha.convert("RGB")
+        return rgb
 
 
 def generate_map_of_predictions_slides(slide_id, predictions_dict,
                                        patches_height=300, patches_width=300,
-                                       map_height=8, map_width=8):
+                                       map_height=8, map_width=8,
+                                       colors=COLORS_RGB):
     """Genera una imagen con el mapeo de predicciones realizadas por el
     algoritmo de machine learning.
 
@@ -217,12 +278,12 @@ def generate_map_of_predictions_slides(slide_id, predictions_dict,
         - map_height: int. Altura en pixeles que debe tener cada mapeo.
         - map_width: int. Ancho en pixeles que debe tener cada mapeo.
         - roi_id: str. Id del ROI particular que se quiere evaluar.
-
+        - colors: dict[str->(int, int, int)]. Mapa de colores a usar. Si no
+        se entrega un valor, se usará COLORS_RGB.
     Returns:
         3D - np.array, donde cada cuadrante ha sido coloreado de acuerdo a la
         predicción realizada por el algoritmo para el parche correspondiente.
     """
-    colors = {'2': (0, 255, 0), '1': (255, 255, 0), '0': (255, 0, 0)}
     x_coords, y_coords, preds = outputs.get_coords_and_preds(
         slide_id, predictions_dict)
     x_max = max(x_coords)
@@ -265,7 +326,7 @@ def plot_confusion_matrix(matrix, classes, title,
                  horizontalalignment="center",
                  color="white" if matrix[i, j] > thresh else "black")
 
-    plt.ylabel('Clase verdadera')
+    plt.ylabel('Clase verdadera ')
     plt.xlabel('Clase predicha')
     plt.tight_layout()
     return fig
