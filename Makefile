@@ -575,3 +575,125 @@ generate_all_per_model_plots: \
 	generate_per_model_plots_kfold_fine_tuning \
 	generate_per_model_plots_kfold_random_fine_tuning
 	echo "Gráficos por modelo listos"
+
+##############################################################
+
+JPEG_SLIDES_MAGNIFICATION = x5
+JPEG_SLIDES_DIR = data/raw/$(SLIDES_DIR)/exported
+ALPHA_VALUE = 45
+
+export_jpeg_from_slides:
+	$(PYTHON_BIN) -m  src.scripts.ihc.export_jpeg_from_slides \
+		--src_dir data/raw/$(SLIDES_DIR) \
+		--magnification $(JPEG_SLIDES_MAGNIFICATION) \
+		--output_dir $(JPEG_SLIDES_DIR)
+
+
+generate_maps_of_predictions_slides_full_kfold:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_slides_full \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index/test_predictions.txt \
+        	--images_dir $(JPEG_SLIDES_DIR) \
+        	--magnification $(JPEG_SLIDES_MAGNIFICATION) \
+        	--alpha_value $(ALPHA_VALUE) \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index/test_maps ; \
+    done;
+
+generate_maps_of_predictions_slides_full_kfold_random:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_slides_full \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index/test_predictions.txt \
+        	--images_dir $(JPEG_SLIDES_DIR) \
+        	--magnification $(JPEG_SLIDES_MAGNIFICATION) \
+        	--alpha_value $(ALPHA_VALUE) \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index/test_maps ; \
+    done;
+
+generate_maps_of_predictions_slides_full_kfold_fine_tuning:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_slides_full \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index/test_predictions.txt \
+        	--images_dir $(JPEG_SLIDES_DIR) \
+        	--magnification $(JPEG_SLIDES_MAGNIFICATION) \
+        	--alpha_value $(ALPHA_VALUE) \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index/test_maps ; \
+    done;
+
+generate_maps_of_predictions_slides_full_kfold_random_fine_tuning:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_slides_full \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index/test_predictions.txt \
+        	--images_dir $(JPEG_SLIDES_DIR) \
+        	--magnification $(JPEG_SLIDES_MAGNIFICATION) \
+        	--alpha_value $(ALPHA_VALUE) \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index/test_maps ; \
+    done;
+
+generate_all_maps_of_predictions_slides_with_background: \
+	generate_maps_of_predictions_slides_full_kfold \
+	generate_maps_of_predictions_slides_full_kfold_random \
+	generate_maps_of_predictions_slides_full_kfold_fine_tuning \
+	generate_maps_of_predictions_slides_full_kfold_random_fine_tuning
+	echo "Mapas de slides con background listos"
+
+
+####################### SÓLO MÁSCARAS (PARA USAR CON IMAGEJ) ##################
+
+imagej_masks_of_predictions_slides_kfold:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_slides_full \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index/test_predictions.txt \
+        	--images_dir $(JPEG_SLIDES_DIR) \
+        	--magnification $(JPEG_SLIDES_MAGNIFICATION) \
+        	--alpha_value 255 \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index/test_maps \
+        	--just_masks ; \
+    done;
+
+imagej_masks_of_predictions_slides_kfold_random:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_slides_full \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index/test_predictions.txt \
+        	--images_dir $(JPEG_SLIDES_DIR) \
+        	--magnification $(JPEG_SLIDES_MAGNIFICATION) \
+        	--alpha_value 255 \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index/test_maps \
+        	--just_masks ; \
+    done;
+
+imagej_masks_of_predictions_slides_kfold_fine_tuning:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_slides_full \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index/test_predictions.txt \
+        	--images_dir $(JPEG_SLIDES_DIR) \
+        	--magnification $(JPEG_SLIDES_MAGNIFICATION) \
+        	--alpha_value 255 \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index/test_maps \
+        	--just_masks ; \
+    done;
+
+imagej_masks_of_predictions_slides_kfold_random_fine_tuning:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.map_of_predictions_slides_full \
+        	--predictions_path results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index/test_predictions.txt \
+        	--images_dir $(JPEG_SLIDES_DIR) \
+        	--magnification $(JPEG_SLIDES_MAGNIFICATION) \
+        	--alpha_value 255 \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index/test_maps \
+        	--just_masks ; \
+    done;
+
+imagej_all_maps_of_predictions_slides: \
+	imagej_masks_of_predictions_slides_kfold \
+	imagej_masks_of_predictions_slides_kfold_random \
+	imagej_masks_of_predictions_slides_kfold_fine_tuning \
+	imagej_masks_of_predictions_slides_kfold_random_fine_tuning
+	echo "Mapas de slides con background listos"
