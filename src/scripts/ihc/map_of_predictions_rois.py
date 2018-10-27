@@ -1,7 +1,4 @@
-"""Extrae los parches desde los ROIs y genera un dataset.
-Este script está hecho para funcionar con el archivo excel con el que he
-estado trabajando estas últimas semanas, no es generalizable a otros archivos.
-"""
+"Genera mapa de predicciones para ROIs"
 
 import os
 import argparse
@@ -10,12 +7,17 @@ from ...utils import outputs
 
 
 def main(predictions_path, rois_dir, dst_dir, patches_height, patches_width):
-    """Clasifica biopsias intentando seguir las guías clínicas.
+    """Genera mapa de predicciones para ROIs
 
     Args:
         - predictions_path: str. Ruta al archivo .txt con las predicciones
         realizadas por la red.
-        - dst_dir: str. Directorio donde se guardarán las imágenes generadas.
+        - rois_dir: str. Directorio donde están ubicados los ROIs.
+        - dst_dir: str. Directorio donde se guardarán las imágenes. Si no se
+        entrega un valor, la carpeta será deducida a partir de
+        predictions_path.
+        - patches_height: int. Altura de los parches utilizados.
+        - patches_width: int Ancho de los parches utilizados.
     """
     with open(predictions_path) as file:
         predictions_list = file.readlines()

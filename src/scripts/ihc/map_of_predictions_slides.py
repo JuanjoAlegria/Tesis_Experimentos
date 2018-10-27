@@ -1,6 +1,8 @@
-"""Extrae los parches desde los ROIs y genera un dataset.
-Este script está hecho para funcionar con el archivo excel con el que he
-estado trabajando estas últimas semanas, no es generalizable a otros archivos.
+"""Script para generar mapas de predicciones para slides. La principal
+diferencia con maps_of_predictions_slides_full, es que el presente script no
+requiere de una imagen con la biopsia en alguna magnificación y que el tamaño
+de la ventana que representa cada parche puede ser de tamaño arbitrario, por
+lo cual puede generar imágenes más pequeñas y fáciles de manejar.
 """
 
 import os
@@ -12,12 +14,18 @@ from ...utils import outputs
 
 def main(predictions_path, dst_dir, patches_height,
          patches_width, map_window_height, map_window_width):
-    """Clasifica biopsias intentando seguir las guías clínicas.
+    """Genera mapas de predicciones para slides.
 
     Args:
         - predictions_path: str. Ruta al archivo .txt con las predicciones
         realizadas por la red.
         - dst_dir: str. Directorio donde se guardarán las imágenes generadas.
+        - patches_height: int. Altura de los parches utilizados.
+        - patches_width: int. Ancho de los parches utilizados.
+        - map_window_height: int. Altura que debe tener la ventana usada para
+        pintar cada parche.
+        - map_window_width: int. Altura que debe tener la ventana usada para
+        pintar cada parche.
     """
     with open(predictions_path) as file:
         predictions_list = file.readlines()
