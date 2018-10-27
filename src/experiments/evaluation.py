@@ -10,7 +10,8 @@ from PIL import ImageDraw
 from ..utils import outputs
 
 PREDICTIONS_MAP = {"0": "negative", "1": "equivocal", "2": "positive"}
-SCALE_MAP = {"x40": 1, "x20": 0.5, "x10": 0.25, "x5": 0.125}
+SCALE_MAP = {"x40": 1, "x20": 0.5, "x10": 0.25,
+             "x5": 0.125, "x2.5": 0.0625, "x1.25": 0.03125}
 COLORS_RGB = {'2': (0, 255, 0),
               '1': (255, 255, 0),
               '0': (255, 0, 0)}
@@ -132,13 +133,13 @@ def get_mask_of_predictions(slide_id, predictions_dict,
 
     Args:
         - slide_id: str. Id de la slide con la que se quiere trabajar.
-        - roi_id: str. Id del roi, perteneciente a slide_id, con el que se
-        quiere trabajar.
         - predictions_dict: dict[str -> (str, str)]. Diccionario con el nombre
         de la imagen como llave, y con valor asociado una tupla con la clase
         real de la imagen en primera posición y la clase predicha en segunda
         posición.
         - image_size: (int, int, int). Tamaño del roi.
+        - roi_id: str. Id del roi, perteneciente a slide_id, con el que se
+        quiere trabajar.
         - patches_height: int. Altura en pixeles de los parches con que se
         evaluó el algoritmo.
         - patches_width: int. Ancho en pixeles de los parches con que se
@@ -247,7 +248,8 @@ def generate_map_of_predictions(img_path, predictions_dict,
         alpha.paste(img)
         mask_predictions = get_mask_of_predictions(slide_id, predictions_dict,
                                                    img.size, roi_id,
-                                                   patches_height, patches_width,
+                                                   patches_height,
+                                                   patches_width,
                                                    magnification, colors)
         alpha.paste(mask_predictions, mask=mask_predictions)
         rgb = alpha.convert("RGB")
