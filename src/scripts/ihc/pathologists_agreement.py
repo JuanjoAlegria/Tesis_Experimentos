@@ -1,3 +1,6 @@
+"""Script para calcular el acuerdo entre patólogos con distintas
+métricas, y considerando biopsias de resecciones, endoscopias y todas"""
+import argparse
 import numpy as np
 import krippendorff
 from sklearn.metrics import cohen_kappa_score
@@ -112,17 +115,50 @@ def get_cohens_kappa(evals_matrix):
             "aggrement_02": aggrement_02,
             "aggrement_12": aggrement_12}
 
-EXCEL_PATH = "/home/juanjo/U/2017/Tesis/Experimentos/data/extras/ihc_slides/HER2.xlsx"
-BIOPSY_TYPE = excel.ENDOSCOPY_CODE
-_, EVALS_MATRIX = excel.get_slides_ids_full_eval(EXCEL_PATH, BIOPSY_TYPE)
-# Convertimos a float, lo cual pasa los None a np.NaN
-EVALS_MATRIX = np.array(EVALS_MATRIX).astype(float)
-# Eliminamos la última columna, la cual contiene la evaluación de consenso y no
-# debe ser considerada para analizar el acuerdo entre patólogos
-EVALS_MATRIX = EVALS_MATRIX[:, :-1]
-STATISTICS = {}
-STATISTICS.update(get_cohens_kappa(EVALS_MATRIX))
-STATISTICS.update(get_krippendorffs_alpha(EVALS_MATRIX))
-STATISTICS.update(get_aggrement_percentage(EVALS_MATRIX))
-for key, value in STATISTICS.items():
-    print(key, ":", value)
+
+def main(excel_path, biopsy_type):
+    """Calcula el acuerdo entre patólogos con distintas métricas, pudiendo
+    filtrar por biopsias de resecciones, endoscopias y todas
+    """
+    if biopsy_type.lower() == "endoscopy":
+        biopsy_code = excel.ENDOSCOPY_CODE
+    elif biopsy_type.lower() == "resection":
+        biopsy_code = excel.RESECTION_CODE
+    elif biopsy_type.lower() == "all":
+        biopsy_code = excel.ALL_BIOPSIES_CODE
+    else:
+        raise ValueError(
+            "Opciones de tipo de biopsias son: endoscopy, resection y all")
+
+    _, evals_matrix = excel.get_slides_ids_full_eval(excel_path, biopsy_code)
+    # Convertimos a float, lo cual pasa los None a np.NaN
+    evals_matrix = np.array(evals_matrix).astype(float)
+    # Eliminamos la última columna, la cual contiene la evaluación de consenso
+    # y no debe ser considerada para analizar el acuerdo entre patólogos
+    evals_matrix = evals_matrix[:, :-1]
+    statistics = {}
+    statistics.update(get_cohens_kappa(evals_matrix))
+    statistics.update(get_krippendorffs_alpha(evals_matrix))
+    statistics.update(get_aggrement_percentage(evals_matrix))
+    print(biopsy_type.upper())
+    print("############################")
+    for key, value in statistics.items():
+        print(key, ":", value)
+
+if __name__ == "__main__":
+    PARSER = argparse.ArgumentParser()
+    PARSER.add_argument(
+        '--excel_path',
+        type=str,
+        help="Ruta al archivo excel con los datos""",
+        default="data/extras/ihc_slides/HER2.xlsx"
+    )
+    PARSER.add_argument(
+        '--biopsy_type',
+        type=str,
+        help="""Tipo de biopsias a analizar. Opciones son: endoscopy, resection
+        y all""",
+        default="all"
+    )
+    FLAGS = PARSER.parse_args()
+    main(FLAGS.excel_path, FLAGS.biopsy_type)
