@@ -52,7 +52,7 @@ def get_filenames_and_labels(data_dir, partition=FULL_DATASET,
     virginica), esta función se encarga de transformar las etiquetas de strings
     a números y entrega un diccionario con el mapeo correspondiente.
 
-    Para asegurar reprdocubilidad entre distintas máquinas, los arreglos
+    Para asegurar replicabilidad entre distintas máquinas, los arreglos
     filenames y labels son ordenados antes de ser retornados.
 
     Args:
@@ -504,7 +504,7 @@ def generate_kfold_with_previous_partition(
         test_fold_fnames = np.array(test_fold_fnames)
         test_fold_labels = np.array(test_fold_labels)
 
-        # Generamos conjunto de validación desde el conjunto de prueba
+        # Generamos conjunto de validación desde el conjunto de entrenamiento
         (train_fold_fnames, train_fold_labels), \
             (val_fold_fnames, val_fold_labels) = generate_validation_set(
                 train_fold_fnames, train_fold_labels, 20)
