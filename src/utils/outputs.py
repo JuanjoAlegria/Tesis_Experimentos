@@ -1,6 +1,8 @@
 """Módulo con utilidades para trabajar con los archivos de salida generados por
 la red neuronal.
 """
+import os
+
 REAL_CLASS_INDEX = 0
 PREDICTED_CLASS_INDEX = 1
 
@@ -45,10 +47,9 @@ def get_all_slides_ids(images_dict):
         diccionario.
     """
     slides_ids = set()
-    for label_and_name in images_dict:
-        _, name = label_and_name.split("/")
-        slide_id = name.split("_")[0]
-        slides_ids.add(slide_id)
+    for image_name in images_dict:
+        properties = get_properties_from_image_name(image_name)
+        slides_ids.add(properties['biopsy_id'])
     return slides_ids
 
 
@@ -127,11 +128,9 @@ def get_rois_ids(slide_id, output_dict):
     """
     rois_ids = set()
     for key in output_dict:
-        _, name = key.split("/")
-        name = name.split(".")[0]
-        current_slide_id, _, _, current_roi_id, *_ = name.split("_")
-        if current_slide_id == slide_id:
-            rois_ids.add(current_roi_id)
+        properties = get_properties_from_image_name(key)
+        if properties['biopsy_id'] == slide_id:
+            rois_ids.add(properties['roi_id'])
     return list(rois_ids)
 
 
@@ -147,7 +146,9 @@ def get_coords_and_preds(slide_id, output_dict, roi_id=None):
         real de la imagen en primera posición y la clase predicha en segunda
         posición.
         - roi_id: str. Si es que se quieren obtener las coordenadas
-        correspondientes a sólo un ROI, se debe pasar la id de este.
+        correspondientes a sólo un ROI, se debe pasar la id de este. En caso
+        contrario, el valor será None y se obtendrán las coordenadas y
+        predicciones de toda la slide.
 
     Returns:
         - x_coords: list[int]. Lista con las coordenadas x de los parches
@@ -162,21 +163,46 @@ def get_coords_and_preds(slide_id, output_dict, roi_id=None):
     y_coords = []
     preds = []
     for key in output_dict:
-        _, name = key.split("/")
-        name = name.split(".")[0]
-        if roi_id is not None:
-            # en las imágenes extraídas desde rois, el formato es i,j
-            current_slide_id, *_, current_roi_id,\
-                y_coord, x_coord = name.split("_")
-        else:
-            current_slide_id, *_, \
-                x_coord, y_coord = name.split("_")
-        if current_slide_id == slide_id and \
-                (roi_id is None or current_roi_id == roi_id):
-            x_coords.append(int(x_coord[1:]))
-            y_coords.append(int(y_coord[1:]))
+        properties = get_properties_from_image_name(key)
+        if properties['biopsy_id'] == slide_id and \
+                (roi_id is None or properties['roi_id'] == roi_id):
+            x_coords.append(properties['x_coord'])
+            y_coords.append(properties['y_coord'])
             preds.append(output_dict[key][PREDICTED_CLASS_INDEX])
     return x_coords, y_coords, preds
+
+
+def get_properties_from_image_name(image_name):
+    """Obtiene las propiedades de una imagen a partir de su nombre.
+
+    Args:
+        - image_name: str. Nombre de la imagen. El formato puede ser
+        {label}/{biopsy_id}_{magn}_{zlevel}_x{x_coord}_y{y_coord}.jpg,
+        en caso de ser un parche sacado directamente de la slide, o
+        {label}/{biopsy_id}_{magn}_{roi_id}_{zlevel}_i{y_coord}_j{x_coord}.jpg,
+        en caso de ser un parche sacado de un roi.
+
+    Returns:
+        dict[str->str|int|None], con llaves label, biopsy_id, magnification,
+        zlevel, roi_id, x_coord e y_coord.
+    """
+    label, name_and_ext = image_name.split("/")
+    name, _ = os.path.splitext(name_and_ext)
+    properties = name.split("_")
+    if len(properties) == 5:
+        # tiene formato (x, y)
+        biopsy_id, magnification, zlevel, x_coord, y_coord = properties
+        x_coord, y_coord = int(x_coord[1:]), int(y_coord[1:])
+        roi_id = None
+    else:
+        # tiene formato (i, j), por lo que hay que invertir las coordenadas
+        biopsy_id, magnification, zlevel, roi_id, y_coord, x_coord = properties
+        x_coord, y_coord = int(x_coord[1:]), int(y_coord[1:])
+
+    return {"label": label, "biopsy_id": biopsy_id,
+            "magnification": magnification,
+            "zlevel": zlevel, "roi_id": roi_id,
+            "x_coord": x_coord, "y_coord": y_coord}
 
 
 def get_slides_aggregated_results(images_names, images_predicted_classes):
@@ -206,11 +232,31 @@ def get_slides_aggregated_results(images_names, images_predicted_classes):
                   "4": {"0": 4890, "1": 560, "2": 300, "total": 5750}}
     """
     slides_results = {}
-    for label_name, pred in zip(images_names, images_predicted_classes):
-        _, name = label_name.split("/")
-        slide_id, *_ = name.split("_")
-        if slide_id not in slides_results:
-            slides_results[slide_id] = {"0": 0, "1": 0, "2": 0, "total": 0}
-        slides_results[slide_id][pred] += 1
-        slides_results[slide_id]["total"] += 1
+    for image_name, pred in zip(images_names, images_predicted_classes):
+        properties = get_properties_from_image_name(image_name)
+        if properties['biopsy_id'] not in slides_results:
+            slides_results[properties['biopsy_id']] = \
+                {"0": 0, "1": 0, "2": 0, "total": 0}
+        slides_results[properties['biopsy_id']][pred] += 1
+        slides_results[properties['biopsy_id']]["total"] += 1
     return slides_results
+
+
+def filter_control_patches(images_names, biopsies_min_x_coords):
+    """Dada una lista de imágenes, elimina todos aquellos parches que
+    pertenecen a tejido control de la biopsia.
+
+    Args:
+        - images_names: list[str]. Lista con los nombres de las imágenes, en la
+        forma {label}/{slide_id}_rest.jpg.
+        - biopsies_min_x_coords: dict[str-> int]. Diccionario con las mínimas
+        coordenadas en el eje x que debe tener un parche para ser considerado
+        como parte de la biopsia y no ser parte del tejido control.
+    """
+    filtered_images_names = []
+    for image_name in images_names:
+        properties = get_properties_from_image_name(image_name)
+        min_x_coord = biopsies_min_x_coords[properties['biopsy_id']]
+        if properties['x_coord'] > min_x_coord:
+            filtered_images_names.append(image_name)
+    return filtered_images_names
