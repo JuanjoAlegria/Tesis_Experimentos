@@ -8,6 +8,11 @@ from ...experiments import hub_module_experiment
 
 
 def train_model_with_dataset(flags, dataset_json):
+    """Función que entrena un modelo. Se obtienen los datasets de
+    entrenamiento, validación y prueba desde dataset_json, y luego se crea un
+    HubModelExperiment, con el cual se entrena y evalúa el modelo, para
+    finalmente ser exportado.
+    """
     print("Obteniendo dataset desde archivo json")
     train_filenames = np.array(dataset_json["train_features"])
     train_labels = np.array(dataset_json["train_labels"])
@@ -33,9 +38,10 @@ def train_model_with_dataset(flags, dataset_json):
 
 
 def main(flags):
-    """Función de entrada. Se obtienen los datasets desde dataset_json,
-    y se crea un HubModelExperiment, con el cual se entrena y evalúa el modelo,
-    para finalmente ser exportado.
+    """Función de entrada. Detecta si flags.dataset_path es un archivo o un
+    directorio, lo cual indicará si es que se está trabajando con sólo un fold
+    o con k-fold. Luego, para cada fold se llama a train_model_with_dataset,
+    función que se encarga del entrenamiento particular de cada fold.
     """
 
     if os.path.isfile(flags.dataset_path):
