@@ -651,8 +651,7 @@ imagej_masks_of_predictions_slides_kfold:
         	--images_dir $(JPEG_SLIDES_DIR) \
         	--magnification $(JPEG_SLIDES_MAGNIFICATION) \
         	--alpha_value 255 \
-        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index/test_maps \
-        	--just_masks ; \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index/test_maps ; \
     done;
 
 imagej_masks_of_predictions_slides_kfold_random:
@@ -663,8 +662,7 @@ imagej_masks_of_predictions_slides_kfold_random:
         	--images_dir $(JPEG_SLIDES_DIR) \
         	--magnification $(JPEG_SLIDES_MAGNIFICATION) \
         	--alpha_value 255 \
-        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index/test_maps \
-        	--just_masks ; \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index/test_maps ; \
     done;
 
 imagej_masks_of_predictions_slides_kfold_fine_tuning:
@@ -675,8 +673,7 @@ imagej_masks_of_predictions_slides_kfold_fine_tuning:
         	--images_dir $(JPEG_SLIDES_DIR) \
         	--magnification $(JPEG_SLIDES_MAGNIFICATION) \
         	--alpha_value 255 \
-        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index/test_maps \
-        	--just_masks ; \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index/test_maps ; \
     done;
 
 imagej_masks_of_predictions_slides_kfold_random_fine_tuning:
@@ -687,8 +684,7 @@ imagej_masks_of_predictions_slides_kfold_random_fine_tuning:
         	--images_dir $(JPEG_SLIDES_DIR) \
         	--magnification $(JPEG_SLIDES_MAGNIFICATION) \
         	--alpha_value 255 \
-        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index/test_maps \
-        	--just_masks ; \
+        	--dst_dir results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index/test_maps ; \
     done;
 
 imagej_all_maps_of_predictions_slides: \
