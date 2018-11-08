@@ -12,12 +12,22 @@ from ..utils import outputs
 PREDICTIONS_MAP = {"0": "negative", "1": "equivocal", "2": "positive"}
 SCALE_MAP = {"x40": 1, "x20": 0.5, "x10": 0.25,
              "x5": 0.125, "x2.5": 0.0625, "x1.25": 0.03125}
+
 COLORS_RGB = {'2': (0, 255, 0),
               '1': (255, 255, 0),
               '0': (255, 0, 0)}
+
 COLORS_RGBA = {'2': (0, 255, 0, 30),
                '1': (255, 255, 0, 30),
                '0': (255, 0, 0, 30)}
+
+COLORS_CONTROL_RGB = {'2': (4, 58, 85),
+                      '1': (0, 161, 242),
+                      '0': (161, 207, 230)}
+
+COLORS_CONTROL_RGBA = {'2': (4, 58, 85, 30),
+                       '1': (0, 161, 242, 30),
+                       '0': (161, 207, 230, 30)}
 
 
 def calculate_tissue_area(slide_id, tissue_proportions,
@@ -168,6 +178,31 @@ def get_mask_of_predictions(slide_id, predictions_dict,
                         (x_coord + patches_width, y_coord + patches_height)],
                        fill=colors[prediction])
     return mask
+
+
+def get_mask_of_predictions_control_tissue(slide_id, preds_biopsy,
+                                           preds_control, image_size,
+                                           patches_height=300,
+                                           patches_width=300,
+                                           magnification="x40",
+                                           colors=COLORS_RGBA,
+                                           colors_control=COLORS_CONTROL_RGBA):
+
+    mask_biopsy = get_mask_of_predictions(slide_id, preds_biopsy,
+                                          image_size, roi_id=None,
+                                          patches_height=patches_height,
+                                          patches_width=patches_width,
+                                          magnification=magnification,
+                                          colors=colors)
+
+    mask_control = get_mask_of_predictions(slide_id, preds_control,
+                                           image_size, roi_id=None,
+                                           patches_height=patches_height,
+                                           patches_width=patches_width,
+                                           magnification=magnification,
+                                           colors=colors_control)
+    mask_biopsy.paste(mask_control, mask=mask_control)
+    return mask_biopsy
 
 
 def generate_map_of_predictions_roi(slide_id, roi_id, rois_dir,
@@ -332,103 +367,3 @@ def plot_confusion_matrix(matrix, classes, title,
     plt.xlabel('Clase predicha')
     plt.tight_layout()
     return fig
-
-# def map_prediction2label(json_predictions):
-#     map_dict = {0: 1, 1: 3, 2: 0, 3: 2}
-#     new_dict = {}
-#     for score_class in json_predictions:
-#         current_dict = json_predictions[score_class]
-#         new_score_dict = {}
-#         for image_name, old_label in current_dict.items():
-#             new_label = map_dict[old_label]
-#             new_score_dict[image_name] = new_label
-#         new_dict[score_class] = new_score_dict
-#     return new_dict
-
-# def get_correct_predictions(json_path, to_be_corrected):
-#     dir_path, name_ext = os.path.split(json_path)
-#     json_name, ext = os.path.splitext(name_ext)
-#     with open(json_path, "r") as f:
-#         predictions = json.load(f)
-#     if not to_be_corrected:
-#         return predictions
-#     else:
-#         new_predictions = map_prediction2label(predictions)
-#         new_path = os.path.join(dir_path, json_name + "_corrected.json")
-#         with open(new_path, "w") as f:
-#             json.dump(new_predictions, f)
-#         return new_predictions
-
-# def summary(y_true, y_pred, experiment_path, experiment_name,
-#             partition):
-
-#     n_images = len(y_true)
-#     n0 = len(np.where(y_true == 0)[0])
-#     n1 = len(np.where(y_true == 1)[0])
-#     n2 = len(np.where(y_true == 2)[0])
-#     n3 = len(np.where(y_true == 3)[0])
-#     accuracy = accuracy_score(y_true, y_pred)
-#     f1 = f1_score(y_true, y_pred, average=None)
-
-#     file_path = os.path.join(experiment_path, "summary_" + partition + ".txt")
-#     with open(file_path, "w") as f:
-#         f.write(experiment_name + "\n")
-#         f.write("# imágenes clase 0+: " + str(n0) + "\n")
-#         f.write("# imágenes clase 1+: " + str(n1) + "\n")
-#         f.write("# imágenes clase 2+: " + str(n2) + "\n")
-#         f.write("# imágenes clase 3+: " + str(n3) + "\n")
-#         f.write("# imágenes total: " + str(n_images) + "\n")
-#         f.write("Accuracy: " + str(accuracy) + "\n")
-#         f.write("F1-score: " + str(f1) + "\n")
-
-# def save_cnf_matrix(y_true, y_pred, dir_path, partition):
-#     cnf_matrix = confusion_matrix(y_true, y_pred)
-#     np.set_printoptions(precision=2)
-
-#     class_names = ["0+", "1+", "2+", "3+"]
-#     # Plot non-normalized confusion matrix
-#     fig = plt.figure()
-#     plot_confusion_matrix(cnf_matrix, classes=class_names,
-#                           experiment_name=experiment_name,
-#                           partition_name=partition)
-#     fig_path = os.path.join(dir_path, "cnf_matrix_" + partition + ".png")
-#     fig.savefig(fig_path)
-
-#     # Plot normalized confusion matrix
-#     fig = plt.figure()
-#     plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=True,
-#                           experiment_name=experiment_name,
-#                           partition_name=partition)
-#     fig_path = os.path.join(dir_path, "cnf_matrix_norm_" + partition + ".png")
-#     fig.savefig(fig_path)
-
-#     # plt.show()
-
-# def build_labels_and_predictions(predictions_json):
-#     y_true = []
-#     y_pred = []
-#     for score_class in predictions_json:
-#         score_dict = predictions_json[score_class]
-#         for image_name in score_dict:
-#             y_true.append(int(score_class))
-#             y_pred.append(int(score_dict[image_name]))
-#     return np.array(y_true), np.array(y_pred)
-
-# def main(experiment_path, experiment_name, to_be_corrected):
-#     for part_id, part_name in [("testing", "prueba"),
-#                                ("training", "entrenamiento")]:
-#         json_path = os.path.join(experiment_path,
-#                                  "predictions_" + part_id + ".json")
-#         predictions_json = get_correct_predictions(json_path, to_be_corrected)
-#         y_true, y_pred = build_labels_and_predictions(predictions_json)
-#         summary(y_true, y_pred, experiment_path, experiment_name, part_id)
-#         save_cnf_matrix(y_true, y_pred, experiment_path, part_name)
-
-# if __name__ == "__main__":
-#     experiment_path = sys.argv[1]
-#     experiment_name = sys.argv[2]
-#     if len(sys.argv) < 4:
-#         to_be_corrected = True
-#     else:
-#         to_be_corrected = bool(sys.argv[3])
-#     main(experiment_path, experiment_name, to_be_corrected)
