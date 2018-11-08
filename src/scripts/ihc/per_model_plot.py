@@ -118,8 +118,13 @@ def main(predictions_path, excel_file, plot_title, dst_dir):
     with open(predictions_path) as file:
         output_lines = file.readlines()
     slides_ids, slides_evaluation = excel.get_valid_slides_ids(excel_file)
+    biopsies_min_x_coords = excel.get_min_x_coords(excel_file)
     evaluation_dict = dict(zip(slides_ids, slides_evaluation))
-    filenames, _, predicted = outputs.transform_to_lists(output_lines)
+
+    predictions_dict = outputs.transform_to_dict(output_lines)
+    preds_biopsies, _ = outputs.split_predictions_dict(
+        predictions_dict, biopsies_min_x_coords)
+    filenames, _, predicted = outputs.dict_to_list(preds_biopsies)
     fig = get_model_plot(filenames, predicted, evaluation_dict, plot_title)
     fig.savefig(os.path.join(dst_dir, "predictions_plot.png"))
 
