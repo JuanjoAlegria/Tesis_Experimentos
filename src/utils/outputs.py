@@ -2,6 +2,7 @@
 la red neuronal.
 """
 import os
+import numpy as np
 
 REAL_CLASS_INDEX = 0
 PREDICTED_CLASS_INDEX = 1
@@ -108,6 +109,27 @@ def transform_to_lists(output_lines):
         real_classes.append(real)
         pred_classes.append(predicted)
     return filenames, real_classes, pred_classes
+
+
+def dict_to_list(predictions_dict):
+    """Transforma un diccionario de predicciones a tres lista de predicciones.
+
+    Args:
+        - predictions_dict. dict[str -> (str, str)]. Diccionario con el nombre
+        de la imagen como llave, y con valor asociado una tupla con la clase
+        real de la imagen en primera posición y la clase predicha en segunda
+        posición.
+
+    Returns:
+        list(str), list(str), list(str). La primera lista contiene los nombres
+        de las imágenes, la segunda lista contiene las clases reales y la
+        tercera contiene las clases predichas por la red.
+    """
+    images_names = list(predictions_dict.keys())
+    values = np.array(list(predictions_dict.values()))
+    real_classes = values[:, REAL_CLASS_INDEX].tolist()
+    predicted_classes = values[:, PREDICTED_CLASS_INDEX].tolist()
+    return images_names, real_classes, predicted_classes
 
 
 def get_rois_ids(slide_id, output_dict):
@@ -260,3 +282,35 @@ def filter_control_patches(images_names, biopsies_min_x_coords):
         if properties['x_coord'] > min_x_coord:
             filtered_images_names.append(image_name)
     return filtered_images_names
+
+
+def split_predictions_dict(preds_dict, biopsies_min_x_coords):
+    """Separa un diccionario de predicciones en dos diccionarios nuevos: uno
+    con las predicciones generadas para las biopsias propiamente tales, y otro
+    con las predicciones obtenidas para los tejidos control de las slides.
+
+    Args:
+        - preds_dict: dict[str->(str, str)] diccionario con predicciones,
+        donde cada llave es el nombre de una imagen en formato
+        {label}/{slide_id}_rest.jpg, y cada valor asociado es una tupla con la
+        clase real y la clase predicha para esa imagen.
+        - biopsies_min_x_coords: dict[str-> int]. Diccionario con las mínimas
+        coordenadas en el eje x que debe tener un parche para ser considerado
+        como parte de la biopsia y no ser parte del tejido control.
+
+    Returns:
+        dict[str->(str, str)], dict[str->(str, str)]. Dos diccionarios, el
+        primero con las predicciones para las imágenes de la biopsia, y el
+        segundo con las predicciones para las imágenes del tejido control.
+    """
+    images_names = list(preds_dict.keys())
+    biopsy_images_names = set(filter_control_patches(images_names,
+                                                     biopsies_min_x_coords))
+    preds_biopsies = {}
+    preds_control = {}
+    for img_name in preds_dict:
+        if img_name in biopsy_images_names:
+            preds_biopsies[img_name] = preds_dict[img_name]
+        else:
+            preds_control[img_name] = preds_dict[img_name]
+    return preds_biopsies, preds_control
