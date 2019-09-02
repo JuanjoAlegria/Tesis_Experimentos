@@ -429,7 +429,7 @@ predict_test_rois_patches_kfold:
 	for index in 1 2 3 4 5 ; do \
 		echo $$index; \
         $(PYTHON_BIN) -m  src.scripts.ihc.predict_test_rois_patches \
-        	--dataset_path data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids/test_rois_dataset_dict_fold_$$index.json  \
+        	--dataset_path data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids/test_rois_dataset_fold_$$index.json  \
         	--images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
         	--experiment_saved_model_dir saved_models/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index \
         	--dst_file results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index/test_rois_predictions.txt \
@@ -440,7 +440,7 @@ predict_test_rois_patches_kfold_random:
 	for index in 1 2 3 4 5 ; do \
 		echo $$index; \
         $(PYTHON_BIN) -m  src.scripts.ihc.predict_test_rois_patches \
-        	--dataset_path data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids/test_rois_dataset_dict_fold_$$index.json  \
+        	--dataset_path data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids/test_rois_dataset_fold_$$index.json  \
         	--images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
         	--experiment_saved_model_dir saved_models/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index \
         	--dst_file results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index/test_rois_predictions.txt \
@@ -451,7 +451,7 @@ predict_test_rois_patches_kfold_fine_tuning:
 	for index in 1 2 3 4 5 ; do \
 		echo $$index; \
         $(PYTHON_BIN) -m  src.scripts.ihc.predict_test_rois_patches \
-        	--dataset_path data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids/test_rois_dataset_dict_fold_$$index.json  \
+        	--dataset_path data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids/test_rois_dataset_fold_$$index.json  \
         	--images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
         	--experiment_saved_model_dir saved_models/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index \
         	--dst_file results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index/test_rois_predictions.txt \
@@ -462,7 +462,7 @@ predict_test_rois_patches_kfold_random_fine_tuning:
 	for index in 1 2 3 4 5 ; do \
 		echo $$index; \
         $(PYTHON_BIN) -m  src.scripts.ihc.predict_test_rois_patches \
-        	--dataset_path data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids/test_rois_dataset_dict_fold_$$index.json  \
+        	--dataset_path data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids/test_rois_dataset_fold_$$index.json  \
         	--images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
         	--experiment_saved_model_dir saved_models/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index \
         	--dst_file results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index/test_rois_predictions.txt \
