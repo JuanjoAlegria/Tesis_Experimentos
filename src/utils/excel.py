@@ -61,32 +61,32 @@ def get_slides_ids_full_eval(excel_file, biopsy_tipe=ALL_BIOPSIES_CODE):
         orden, la clasificación del patólogo 0, patólogo 1, patólogo 2,
         evaluación final(ej: (3, 2, 3, 3)).
     """
-    crossed_info = pd.read_excel(excel_file, sheetname=SUMMARY_INFO_SHEET"Resumen"
+    crossed_info = pd.read_excel(excel_file, sheetname=SUMMARY_INFO_SHEET)
     if biopsy_tipe not in [ALL_BIOPSIES_CODE, ENDOSCOPY_CODE, RESECTION_CODE]:
         raise ValueError("Tipo de biopsia debe ser: " +
                          "excel.ALL_BIOPSIES_CODE, excel.ENDOSCOPY_CODE o " +
                          "excel.RESECTION_CODE")
     # Filtramos por tipo de biopsia
     if biopsy_tipe != ALL_BIOPSIES_CODE:
-        crossed_info=crossed_info.loc[
+        crossed_info = crossed_info.loc[
             crossed_info[BIOPSY_TYPE_COLUMN] == biopsy_tipe]
-    slides_names=crossed_info[SLIDES_NAMES_COLUMN].tolist()
-    slides_ids=map(lambda s: re.match(SLIDES_NAME_PATTERN, s).group(1),
+    slides_names = crossed_info[SLIDES_NAMES_COLUMN].tolist()
+    slides_ids = map(lambda s: re.match(SLIDES_NAME_PATTERN, s).group(1),
                      slides_names)
 
-    eval_0=crossed_info[PATHOLOGIST_0_COLUMN].tolist()
-    eval_0=map(str_of_int_or_none, eval_0)
+    eval_0 = crossed_info[PATHOLOGIST_0_COLUMN].tolist()
+    eval_0 = map(str_of_int_or_none, eval_0)
 
-    eval_1=crossed_info[PATHOLOGIST_1_COLUMN].tolist()
-    eval_1=map(str_of_int_or_none, eval_1)
+    eval_1 = crossed_info[PATHOLOGIST_1_COLUMN].tolist()
+    eval_1 = map(str_of_int_or_none, eval_1)
 
-    eval_2=crossed_info[PATHOLOGIST_2_COLUMN].tolist()
-    eval_2=map(str_of_int_or_none, eval_2)
+    eval_2 = crossed_info[PATHOLOGIST_2_COLUMN].tolist()
+    eval_2 = map(str_of_int_or_none, eval_2)
 
-    eval_final=crossed_info[FINAL_EVALUATION_COLUMN].tolist()
-    eval_final=map(str_of_int_or_none, eval_final)
+    eval_final = crossed_info[FINAL_EVALUATION_COLUMN].tolist()
+    eval_final = map(str_of_int_or_none, eval_final)
 
-    all_evaluations=zip(eval_0, eval_1, eval_2, eval_final)
+    all_evaluations = zip(eval_0, eval_1, eval_2, eval_final)
     return list(slides_ids), list(all_evaluations)
 
 
@@ -103,16 +103,16 @@ def get_valid_slides_ids(excel_file):
         id de slide(11, 4, 116, etc), mientras que en la segunda lista cada
         item corresponde a la clasificación HER2 de la slide correlativa.
     """
-    crossed_info=pd.read_excel(excel_file, sheetname=SUMMARY_INFO_SHEET"Resumen"
-    not_null=~crossed_info[FINAL_EVALUATION_COLUMN].isnull()
-    valid_rows=crossed_info[not_null]
+    crossed_info = pd.read_excel(excel_file, sheetname=SUMMARY_INFO_SHEET)
+    not_null = ~crossed_info[FINAL_EVALUATION_COLUMN].isnull()
+    valid_rows = crossed_info[not_null]
 
-    valid_slides_names=valid_rows[SLIDES_NAMES_COLUMN].tolist()
-    valid_slides_ids=map(lambda s: re.match(SLIDES_NAME_PATTERN, s).group(1),
+    valid_slides_names = valid_rows[SLIDES_NAMES_COLUMN].tolist()
+    valid_slides_ids = map(lambda s: re.match(SLIDES_NAME_PATTERN, s).group(1),
                            valid_slides_names)
 
-    slides_eval=valid_rows[FINAL_EVALUATION_COLUMN].tolist()
-    slides_eval=map(str_of_int_or_none, slides_eval)
+    slides_eval = valid_rows[FINAL_EVALUATION_COLUMN].tolist()
+    slides_eval = map(str_of_int_or_none, slides_eval)
 
     return list(valid_slides_ids), list(slides_eval)
 
@@ -132,14 +132,13 @@ def get_valid_annotations_labels(excel_file, valid_owners):
         anotaciones válidas, y como valores asociados las clases
         correpondientes.
     """
-    annotations_info=pd.read_excel(
+    annotations_info = pd.read_excel(
         excel_file, sheetname=ANNOTATIONS_INFO_SHEET)
     annotations_info.set_index(ANNOTATION_ID_COLUMN, inplace=True)
-    valid_annotations={}
+    valid_annotations = {}
     for index, row in annotations_info.iterrows():
-        if row[ANNOTATION_OWNER_COLUMN] in valid_owners and \
-                row[ANNOTATION_TYPE_COLUMN] in ["freehand", "circle"]:
-            valid_annotations[str(index)]=str(row[ANNOTATION_LABEL_COLUMN])
+        if row[ANNOTATION_OWNER_COLUMN] in valid_owners and row[ANNOTATION_TYPE_COLUMN] in ["freehand", "circle"]:
+            valid_annotations[str(index)] = str(row[ANNOTATION_LABEL_COLUMN])
     return valid_annotations
 
 
@@ -156,15 +155,15 @@ def get_min_x_coords(excel_file):
         coordenada mínima en el eje x para que un parche sea considerado parte
         de la biopsia y no parte del tejido control.
     """
-    crossed_info=pd.read_excel(excel_file, sheetname=SUMMARY_INFO_SHEET"Resumen"
-    not_null=~crossed_info[FINAL_EVALUATION_COLUMN].isnull()
-    valid_rows=crossed_info[not_null]
+    crossed_info = pd.read_excel(excel_file, sheetname=SUMMARY_INFO_SHEET)
+    not_null = ~crossed_info[FINAL_EVALUATION_COLUMN].isnull()
+    valid_rows = crossed_info[not_null]
 
-    valid_slides_names=valid_rows[SLIDES_NAMES_COLUMN].tolist()
-    valid_slides_ids=map(lambda s: re.match(SLIDES_NAME_PATTERN, s).group(1),
+    valid_slides_names = valid_rows[SLIDES_NAMES_COLUMN].tolist()
+    valid_slides_ids = map(lambda s: re.match(SLIDES_NAME_PATTERN, s).group(1),
                            valid_slides_names)
 
-    min_x_coords=valid_rows[MIN_X_COORD_COLUMN].tolist()
-    min_x_coords=map(int, min_x_coords)
+    min_x_coords = valid_rows[MIN_X_COORD_COLUMN].tolist()
+    min_x_coords = map(int, min_x_coords)
 
     return dict(zip(valid_slides_ids, min_x_coords))

@@ -28,6 +28,7 @@ def write_csv(annotations_list, csv_path):
         title = annotation_object.title
         owner = annotation_object.owner
         details = annotation_object.details
+        color = annotation_object.color
         physical_region = annotation_object.physical_region
         info = [slide_name, annotation_id, annotation_type, title,
                 owner, details]
@@ -50,7 +51,8 @@ def main(annotations_dir, save_dir, csv_path):
 
     all_annotations = []
     for annotation_name in os.listdir(annotations_dir):
-        if ".xml" not in annotation_name:
+        _, ext = os.path.splitext(annotation_name)
+        if ext not in [".ndpa", ".xml"]:
             continue
         annotation_path = os.path.join(annotations_dir, annotation_name)
         all_annotations += annotation.get_all_annotations_from_xml(
@@ -59,6 +61,8 @@ def main(annotations_dir, save_dir, csv_path):
     print("Cargadas {n} anotaciones".format(n=len(all_annotations)))
 
     for annotation_object in all_annotations:
+        if annotation_object.annotation_type == "pin":  # si es un pin, no tiene sentido serializarlo
+            continue
         file_name = "{slide_name}_{annotation_id}.pkl".format(
             slide_name=annotation_object.slide_name,
             annotation_id=annotation_object.annotation_id)

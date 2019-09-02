@@ -336,6 +336,7 @@ class Annotation:
         el archivo xml correspondiente.
         - title: str. Título de la anotación.
         - details: str. Detalles añadidos a la anotación.
+        - color: str. Color de la anotación.
         - region: CircularRegion o RectangularRegion: ROI asociado a la
         anotación, en coordenadas físicas. Se asume que las coordenadas están
         respecto a la magnificación x40.
@@ -345,13 +346,14 @@ class Annotation:
     """
 
     def __init__(self, slide_name, annotation_id, annotation_type,
-                 title="", owner="", details="", region=None):
+                 title="", owner="", details="", color="", region=None):
         self.slide_name = slide_name
         self.annotation_id = annotation_id
         self.annotation_type = annotation_type
         self.title = title
         self.owner = owner
         self.details = details
+        self.color = color
         self.physical_region = region
 
     def extract_region_from_ndpi(self, slide_path, slide_magnification="x40"):
@@ -401,6 +403,10 @@ def create_annotation_from_view(view, slide_name):
     details = view.find("details").text
     annotation_region = view.find("annotation")
     annotation_type = annotation_region.attrib["type"]
+    annotation_color = annotation_region.attrib["color"]
+    if not details and annotation_type != "pin":
+        title = map_colors_to_types(annotation_color)
+
     if annotation_type == "circle":
         x_coord = float(annotation_region.find('x').text)
         y_coord = float(annotation_region.find('y').text)
@@ -424,7 +430,8 @@ def create_annotation_from_view(view, slide_name):
         region = None
 
     return Annotation(slide_name, annotation_id, annotation_type,
-                      title=title, owner=owner, details=details, region=region)
+                      title=title, owner=owner, details=details,
+                      color=annotation_color, region=region)
 
 
 def get_top_left_and_size(box):
@@ -478,9 +485,37 @@ def get_properties_ndpi(ndpi_path):
     return x_offset, y_offset, mpp_x, mpp_y, width_l0, height_l0
 
 
+def map_colors_to_types(color):
+    """Obtiene el tipo de región asociado a un color en particular.
+
+    Args:
+        - color: str. Color en formato hexadecimal
+
+    Returns:
+        str, tipo de región asociada.
+
+    Raises:
+        ValueError: si es que el color entregado no corresponde a alguno de
+        los definidos.
+    """
+    colors_map = {
+        "#000000": "No tumor",  # negro
+        "#00ff00": "Negativo",  # verde
+        "#ffff00": "Positivo no lineal",  # amarillo
+        "#ff0000": "Positivo lineal casi imperceptible",  # rojo
+        "#0000ff": "Positivo lineal débil",  # azul
+        "#ff00ff": "Positivo lineal fuerte"  # rojo
+    }
+    try:
+        return colors_map[color]
+    except:
+        raise ValueError("Color {color} no está registrado".
+                         format(color=color))
+
+
 def get_all_annotations_from_xml(xml_path):
     """Obtiene todas las anotaciones de un xml, incluyendo su id, autor,
-    detalle y región asociaada
+    detalle y región asociada
 
     Args:
         - xml_path: str. Ubicación del xml con anotaciones ndp

@@ -35,6 +35,10 @@ def get_slide_path(annotation, slides_dir):
     Originalmente, las slides tienen nombres de tipo 229-UCH-xyz-IDA (%).ndpi,
     pero por simplicidad, se les cambió el nombre a sólo xyz.ndpi.
 
+    ACTUALIZACIÓN: en nueva versión de experimento, es posible que
+    annotation.slide_name ya esté en formato xyz.ndpi, por lo cual en ese caso,
+    sólo se retorna la concatenación de slides_dir y el nombre de la slide.
+
     Args:
         - annotation: ndp.annotation.Annotation. Anotación que contiene la
         region que se quiere extraer.
@@ -44,7 +48,8 @@ def get_slide_path(annotation, slides_dir):
         str, con la ruta de la slide correspondiente.
 
     """
-
+    if re.match(r'(\d*).ndpi', annotation.slide_name):
+        return os.path.join(slides_dir, annotation.slide_name)
     pattern = r'229-UCH-(\d*)-IDA'
     slide_id = re.match(pattern, annotation.slide_name).group(1)
     return os.path.join(slides_dir, slide_id + ".ndpi")
