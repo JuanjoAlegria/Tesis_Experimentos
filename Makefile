@@ -362,8 +362,6 @@ data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids
 
 ############################### EVALUATION ###################################
 
-DATASET_PARTITION = 'validation'
-
 # Las predicciones realizadas en los datos de entrenamiento no se guardan al
 # entrenar la red, así que aquí arreglamos ese problema
 predict_train_patches_kfold:
@@ -417,10 +415,75 @@ predict_all_train_patches: \
 	predict_train_patches_kfold_random_fine_tuning
 	echo "Predicciones listas"
 
+################################# GENERATE ROIS TEST IMAGES ######################################
+generate_rois_test_dataset: 
+	$(PYTHON_BIN) -m src.scripts.ihc.generate_rois_test_dataset \
+		--ids_partition_json data/partitions_json/$(SLIDES_DIR)/kfold_fixed_ids.json \
+		--dataset_dict_folder data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids
+
+
+
+################################## PREDICT TEST ROIS IMAGES #####################################3
+
+predict_test_rois_patches_kfold:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.predict_test_rois_patches \
+        	--dataset_path data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids/test_rois_dataset_dict_fold_$$index.json  \
+        	--images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+        	--experiment_saved_model_dir saved_models/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index \
+        	--dst_file results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_experiment_$$index/test_rois_predictions.txt \
+        	--batch_size 100 ; \
+    done;
+
+predict_test_rois_patches_kfold_random:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.predict_test_rois_patches \
+        	--dataset_path data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids/test_rois_dataset_dict_fold_$$index.json  \
+        	--images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+        	--experiment_saved_model_dir saved_models/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index \
+        	--dst_file results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_experiment_$$index/test_rois_predictions.txt \
+        	--batch_size 100 ; \
+    done;
+
+predict_test_rois_patches_kfold_fine_tuning:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.predict_test_rois_patches \
+        	--dataset_path data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids/test_rois_dataset_dict_fold_$$index.json  \
+        	--images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+        	--experiment_saved_model_dir saved_models/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index \
+        	--dst_file results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_fine_tuning_experiment_$$index/test_rois_predictions.txt \
+        	--batch_size 100 ; \
+    done;
+
+predict_test_rois_patches_kfold_random_fine_tuning:
+	for index in 1 2 3 4 5 ; do \
+		echo $$index; \
+        $(PYTHON_BIN) -m  src.scripts.ihc.predict_test_rois_patches \
+        	--dataset_path data/partitions_json/ihc_patches_$(MAGNIFICATION)/k_fold_fixed_ids/test_rois_dataset_dict_fold_$$index.json  \
+        	--images_dir data/processed/$(PATCHES_FROM_ROIS_DIR) \
+        	--experiment_saved_model_dir saved_models/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index \
+        	--dst_file results/$(K_FOLD_FIXED_IDS_EXPERIMENT)_random_fine_tuning_experiment_$$index/test_rois_predictions.txt \
+        	--batch_size 100 ; \
+    done;
+
+predict_all_test_rois_patches: \
+	predict_test_rois_patches_kfold \
+	predict_test_rois_patches_kfold_random \
+	predict_test_rois_patches_kfold_fine_tuning \
+	predict_test_rois_patches_kfold_random_fine_tuning
+	echo "Predicciones listas"
+
 ## Mapa de predicciones para ROIs: corresponden a los ROIs originales, donde ## para cada parche extraído desde allí es pintado con transparencia con un 
 ## color correspondiente a la predicción realizada por la red. De esta forma, 
 ## el fondo de la imagen es el ROI original, y además tiene ventanas pintadas ## de distintos colores. 
 ## Esto script sirve para los conjuntos de entrenamiento y validación.
+
+
+DATASET_PARTITION = 'validation'
+
 generate_maps_of_predictions_rois_kfold:
 	for index in 1 2 3 4 5 ; do \
 		echo $$index; \
