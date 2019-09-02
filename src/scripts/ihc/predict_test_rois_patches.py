@@ -122,5 +122,5 @@ if __name__ == "__main__":
         """
     )
     FLAGS = PARSER.parse_args()
-    main(FLAGS.dataset_path, FLAGS.train_images_dir,
+    main(FLAGS.dataset_path, FLAGS.images_dir,
          FLAGS.experiment_saved_model_dir, FLAGS.dst_file, FLAGS.batch_size)
