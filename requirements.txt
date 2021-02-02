@@ -2,7 +2,7 @@ absl-py==0.6.1
 astor==0.7.1
 astroid==2.0.4
 beautifulsoup4==4.6.3
-bleach==1.5.0
+bleach==3.3.0
 bs4==0.0.1
 certifi==2018.10.15
 chardet==3.0.4
