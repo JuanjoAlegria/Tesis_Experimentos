@@ -23,7 +23,7 @@ matplotlib==3.0.1
 mccabe==0.6.1
 networkx==2.2
 numpy==1.15.4
-opencv-python==3.4.3.18
+opencv-python==3.4.7.28
 openslide-python==1.1.1
 pandas==0.23.4
 Pillow==5.3.0
